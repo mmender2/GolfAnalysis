@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- *** CHANGE: Updated Title *** -->
+    <title>7-Iron Shot Analysis Report - Unleashed! (v4 - CSV Load)</title>
+
+    <!-- Styling -->
+
+    <!-- Core Libs -->
+    <script src="https://cdn.jsdelivr.net/npm/react-datepicker@4.8.0/dist/react-datepicker.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chrono-node/1.3.11/chrono.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.15.0/Recharts.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      body { background-color: #111827; color: #d1d5db; }
+      .recharts-tooltip-cursor { stroke: #9ca3af; stroke-dasharray: 3 3; } /* gray-400 */
+      .loading-spinner {
+        border: 4px solid #4b5563; /* gray-600 */
+        border-top: 4px solid #3b82f6; /* blue-500 */
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      .error-message { color: #f87171; background-color: #4b1d1d; border: 1px solid #ef4444; padding: 1rem; margin: 1rem; border-radius: 0.5rem; font-family: sans-serif; }
+      .error-message h1 { font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem; }
+      .error-message code { background-color: #5f2727; padding: 0.1em 0.4em; border-radius: 0.25rem; font-size: 0.9em;}
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #1f2937; }
+      ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 font-sans">
+    <div id="root">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh;">
+            <div class="loading-spinner"></div>
+            <p style="color: #9ca3af;">Initializing Report & Loading Data...</p>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        function runApplication() {
+            console.log("Checking library availability...");
+            // --- Library Availability Check (Keep as is) ---
+            const missingLibs = [];
+            if (typeof React === 'undefined') missingLibs.push('React');
+            if (typeof ReactDOM === 'undefined') missingLibs.push('ReactDOM');
+            if (typeof Papa === 'undefined') missingLibs.push('PapaParse');
+            if (typeof Recharts === 'undefined') missingLibs.push('Recharts');
+            if (typeof Babel === 'undefined') missingLibs.push('Babel');
+
+            if (missingLibs.length > 0) {
+                const errorMsg = `One or more required libraries failed to load: ${missingLibs.join(', ')}.`;
+                console.error(errorMsg);
+                console.error("Check Network tab (F12) for failed scripts. Ensure no extensions block CDNs.");
+                const rootElement = document.getElementById('root');
+                 if (rootElement) {
+                    rootElement.innerHTML = `
+                        <div class="error-message">
+                            <h1>Initialization Error</h1>
+                            <p>A required JavaScript library failed to load: <code>${missingLibs.join(', ')}</code>.</p>
+                            <p>Please check internet connection, content blockers, and reload. Check console (F12) & Network tab for details.</p>
+                        </div>`;
+                }
+                return;
+            }
+            console.log("All libraries seem available.");
+
+            // --- Destructure Libraries (Keep as is) ---
+            const { useEffect, useState, Component } = React;
+            const { ResponsiveContainer, ScatterChart, CartesianGrid, XAxis, YAxis, ZAxis, Tooltip, Legend, Scatter, ReferenceLine, ReferenceArea, Cell } = Recharts;
+
+            console.log("Script starting...");
+
+            // --- *** CHANGE: CSV File Path for 7-Iron *** ---
+            const CSV_FILE_PATH = '7ir100.csv'; // Assumes CSV is in the same directory
+
+            // --- Helper Functions (Keep as is) ---
+            function calculateStats(data, key) {
+                 if (!data || data.length === 0) { console.warn(`No data for stat: ${key}`); return { avg: NaN, stdDev: NaN, min: NaN, max: NaN, median: NaN }; }
+                const values = data.map(d => d[key]).filter(v => typeof v === 'number' && !isNaN(v));
+                if (values.length === 0) { console.warn(`No valid numeric values for stat: ${key}`); return { avg: NaN, stdDev: NaN, min: NaN, max: NaN, median: NaN }; }
+
+                const sum = values.reduce((acc, val) => acc + val, 0);
+                const avg = sum / values.length;
+                const sqDiffs = values.map(v => Math.pow(v - avg, 2));
+                const avgSqDiff = sqDiffs.reduce((acc, val) => acc + val, 0) / values.length;
+                const stdDev = Math.sqrt(avgSqDiff);
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+
+                if (values.length === 0) return { avg: NaN, stdDev: NaN, min: NaN, max: NaN, median: NaN };
+                const sorted = [...values].sort((a, b) => a - b);
+                const mid = Math.floor(sorted.length / 2);
+                const median = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+
+                return { avg, stdDev, min, max, median };
+            }
+
+            function calculateAbsStat(data, key) {
+                if (!data || data.length === 0) { console.warn(`No data for abs stat: ${key}`); return { avg: NaN }; }
+                const values = data.map(d => Math.abs(d[key])).filter(v => typeof v === 'number' && !isNaN(v));
+                if (values.length === 0) { console.warn(`No valid numeric values for abs stat: ${key}`); return { avg: NaN }; }
+                const sum = values.reduce((acc, val) => acc + val, 0);
+                const avg = sum / values.length;
+                return { avg };
+            }
+            // *** NEW: Function to Calculate GIR Probabilities ***
+            function calculateGIRProbabilities(filteredData, avgCarry) {
+                if (!filteredData || filteredData.length === 0 || isNaN(avgCarry)) {
+                    console.warn("Cannot calculate GIR probabilities: Invalid input data.");
+                    return [];
+                }
+
+                const GREEN_WIDTH_YARDS = 30; // Typical green width assumption
+                const GREEN_DEPTH_YARDS = 30; // Typical green depth assumption
+                const HALF_WIDTH = GREEN_WIDTH_YARDS / 2;
+                const HALF_DEPTH = GREEN_DEPTH_YARDS / 2;
+
+                // Define distances around the average to test
+                const distancesToTest = [
+                    Math.round(avgCarry - 20),
+                    Math.round(avgCarry - 10),
+                    Math.round(avgCarry),
+                    Math.round(avgCarry + 10),
+                    Math.round(avgCarry + 20),
+                ].filter(d => d > 0); // Ensure distances are positive
+
+                const results = distancesToTest.map(targetDistance => {
+                    let hitCount = 0;
+                    filteredData.forEach(shot => {
+                        const isOnGreenWidth = Math.abs(shot.SideCarry) <= HALF_WIDTH;
+                        const isOnGreenDepth = (shot.CarryDistance >= targetDistance - HALF_DEPTH) &&
+                                               (shot.CarryDistance <= targetDistance + HALF_DEPTH);
+
+                        if (isOnGreenWidth && isOnGreenDepth) {
+                            hitCount++;
+                        }
+                    });
+                    const probability = (hitCount / filteredData.length) * 100;
+                    return { distance: targetDistance, probability: probability };
+                });
+
+                console.log("Calculated GIR Probabilities:", results);
+                return results;
+            }
+            // *** NEW: Function to Calculate Shot Quality Probabilities ***
+            function calculateShotQualityProbabilities(filteredData, stats) {
+                if (!filteredData || filteredData.length === 0 || !stats?.carryDistance?.avg) {
+                    console.warn("Cannot calculate shot quality: Invalid input.");
+                    return null;
+                }
+
+                // Define thresholds for "good" shots (adjust as needed for 7i)
+                const DISTANCE_WINDOW_YDS = 7.5; // e.g., +/- 7.5 yards from average carry
+                const ACCURACY_WINDOW_YDS = 10;  // e.g., +/- 10 yards from center line
+                const MIN_GOOD_SMASH = 1.30;     // Minimum acceptable Smash Factor
+
+                let distanceControlCount = 0;
+                let accuracyCount = 0;
+                let highSmashCount = 0;
+                let stockShotCount = 0;
+                const avgCarry = stats.carryDistance.avg;
+
+                filteredData.forEach(shot => {
+                    // Distance Control Check
+                    const isDistanceOk = Math.abs(shot.CarryDistance - avgCarry) <= DISTANCE_WINDOW_YDS;
+                    if (isDistanceOk) distanceControlCount++;
+
+                    // Accuracy Check
+                    const isAccuracyOk = Math.abs(shot.SideCarry) <= ACCURACY_WINDOW_YDS;
+                    if (isAccuracyOk) accuracyCount++;
+
+                    // High Smash Check
+                    const isSmashOk = shot.SmashFactor >= MIN_GOOD_SMASH;
+                    if (isSmashOk) highSmashCount++;
+
+                    // Stock Shot Check (Both Distance and Accuracy)
+                    if (isDistanceOk && isAccuracyOk) {
+                        stockShotCount++;
+                    }
+                });
+
+                const totalShots = filteredData.length;
+                const results = {
+                    distanceWindow: DISTANCE_WINDOW_YDS,
+                    accuracyWindow: ACCURACY_WINDOW_YDS,
+                    smashThreshold: MIN_GOOD_SMASH,
+                    distanceControlProb: (distanceControlCount / totalShots) * 100,
+                    accuracyProb: (accuracyCount / totalShots) * 100,
+                    highSmashProb: (highSmashCount / totalShots) * 100,
+                    stockShotProb: (stockShotCount / totalShots) * 100,
+                };
+
+                console.log("Calculated Shot Quality Probabilities:", results);
+                return results;
+            }
+            // --- Custom Tooltip (Keep as is) ---
+             const CustomTooltip = ({ active, payload, label }) => {
+                 if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    if (!data) return null;
+
+                    return (
+                    <div className="bg-gray-700 border border-gray-600 shadow-lg rounded-md p-3 text-sm text-gray-100 opacity-95 max-w-xs">
+                        <p className="font-semibold mb-1 text-blue-300">{`Shot Index: ${data.index || 'N/A'}`}</p>
+                        {Object.entries(data).map(([key, value]) => {
+                        if (typeof value === 'number' && !isNaN(value) && !['x', 'y', 'z', 'index'].includes(key)) {
+                            let unit = '';
+                            const lowerKey = key.toLowerCase();
+                            if (lowerKey.includes('distance')) unit = ' yds';
+                            else if (lowerKey.includes('speed')) unit = ' mph';
+                            else if (lowerKey.includes('angle') || lowerKey.includes('direction') || lowerKey.includes('axis')) unit = ' °';
+                            else if (lowerKey.includes('spin')) unit = ' rpm';
+                            else if (lowerKey.includes('factor')) unit = '';
+                            else if (lowerKey.includes('apex')) unit = ' ft';
+                            else if (lowerKey.includes('side')) unit = ' yds';
+
+                            const formattedValue = lowerKey.includes('factor') ? value.toFixed(2) : (lowerKey.includes('spin') ? value.toFixed(0) : value.toFixed(1));
+                            const displayName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+
+                            return <p key={key} className="truncate">{`${displayName}: ${formattedValue}${unit}`}</p>;
+                        }
+                        return null;
+                        })}
+                    </div>
+                    );
+                }
+                return null;
+            };
+
+            // --- *** CHANGE: Color Helpers (Reverted thresholds for 7i) *** ---
+             const getSmashColor = (value) => {
+                if (!value || isNaN(value)) return "#6b7280"; // gray-500 for invalid
+                if (value < 1.15) return "#ef4444"; // red-500
+                if (value < 1.25) return "#f97316"; // orange-500
+                if (value < 1.30) return "#eab308"; // yellow-500
+                if (value < 1.35) return "#84cc16"; // lime-500
+                return "#22c55e"; // green-500 (1.35+)
+            };
+
+            // --- Error Boundary (Keep as is) ---
+             class ErrorBoundary extends Component {
+                 constructor(props) {
+                    super(props);
+                    this.state = { hasError: false, error: null, errorInfo: null };
+                }
+                static getDerivedStateFromError(error) { return { hasError: true }; }
+                componentDidCatch(error, errorInfo) {
+                    console.error("ErrorBoundary caught an error:", error, errorInfo);
+                    this.setState({ error: error, errorInfo: errorInfo });
+                }
+                render() {
+                    if (this.state.hasError) {
+                        return (
+                            <div className="p-4 m-4 border border-red-500 rounded bg-red-900 bg-opacity-30 text-red-300">
+                                <h1 className="text-xl font-bold mb-2 text-red-400">Oops! Component Error</h1>
+                                <p>There was an error rendering this section.</p>
+                                <details className="mt-2 text-sm">
+                                    <summary className="cursor-pointer text-red-400 hover:text-red-200">Error Details</summary>
+                                    <pre className="mt-1 p-2 bg-gray-800 rounded text-xs overflow-auto text-red-200">
+                                        {this.state.error && this.state.error.toString()}<br />
+                                        {this.state.errorInfo && this.state.errorInfo.componentStack}
+                                    </pre>
+                                </details>
+                            </div>
+                        );
+                    }
+                    return this.props.children;
+                }
+            }
+
+            // --- Main App Component ---
+             function App() {
+                const [data, setData] = useState(null);
+                const [stats, setStats] = useState(null);
+                const [loading, setLoading] = useState(true);
+                const [error, setError] = useState(null);
+                const [originalCount, setOriginalCount] = useState(0);
+                const [girProbabilities, setGirProbabilities] = useState([]); // *** NEW State for GIR probs
+                const [shotQualityProbs, setShotQualityProbs] = useState(null); // *** NEW State
+
+                useEffect(() => {
+                    console.log("useEffect starting data load...");
+                    setLoading(true);
+                    setError(null);
+                    setGirProbabilities([]); // Reset GIR state
+                    setShotQualityProbs(null); // Reset Quality state
+
+                    fetch(CSV_FILE_PATH)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! Status: ${response.status} - Could not fetch ${CSV_FILE_PATH}.`);
+                            }
+                            return response.text();
+                        })
+                        .then(csvText => {
+                            console.log("CSV file fetched successfully. Parsing...");
+                            Papa.parse(csvText.trim(), {
+                                header: true,
+                                skipEmptyLines: true,
+                                dynamicTyping: true,
+                                transformHeader: (header) => header.trim().replace(/\s+/g, ''),
+                                complete: (results) => {
+                                    console.log("PapaParse complete."); // Simplified log
+                                    if (results.errors.length > 0) {
+                                        console.error("PapaParse errors:", results.errors);
+                                        setError(`Error parsing CSV: ${results.errors[0].message}.`);
+                                        setLoading(false); return;
+                                    }
+                                    if (!results.data || results.data.length === 0) {
+                                        setError("No data rows found in CSV.");
+                                        setLoading(false); return;
+                                    }
+
+                                    const initialData = results.data;
+                                    setOriginalCount(initialData.length);
+                                    console.log(`Parsed ${initialData.length} rows.`);
+
+                                    // Process and Validate
+                                    const processedData = initialData.map((row, index) => {
+                                        const numericFields = ['CarryDistance','TotalDistance','BallSpeed','LaunchAngle','LaunchDirection','Apex','SideCarry','ClubSpeed','SmashFactor','DescentAngle','SpinRate','SpinAxis'];
+                                        const cleanRow = { ...row, index: index + 1 };
+                                        let valid = true;
+                                        numericFields.forEach(field => {
+                                             if (typeof cleanRow[field] !== 'number' || isNaN(cleanRow[field])) {
+                                                if (['CarryDistance','SmashFactor','ClubSpeed'].includes(field)) { valid = false; }
+                                                else { cleanRow[field] = NaN; }
+                                            }
+                                        });
+                                        if (cleanRow.ClubType && !cleanRow.ClubType.toLowerCase().includes('7i')) console.warn(`Row ${index+1} Club: ${cleanRow.ClubType}`);
+                                        return valid ? cleanRow : null;
+                                    }).filter(row => row !== null);
+                                    console.log(`Processed ${processedData.length} valid rows.`);
+
+                                    // Outlier Filtering (7i)
+                                    const MIN_CARRY_YDS = 80, MIN_SMASH = 1.15, MIN_SPEED = 60;
+                                    const filteredData = processedData.filter(s =>
+                                        s.CarryDistance >= MIN_CARRY_YDS && s.SmashFactor >= MIN_SMASH && s.ClubSpeed >= MIN_SPEED
+                                    );
+                                    const filteredCount = processedData.length - filteredData.length;
+                                    console.log(`Filtered out ${filteredCount} outliers.`);
+
+                                    if (filteredData.length === 0) {
+                                        setError(`No valid shots remaining after filtering.`);
+                                        setLoading(false); return;
+                                    }
+                                    setData(filteredData);
+
+                                    // Calculate Stats
+                                    console.log(`Calculating stats on ${filteredData.length} shots...`);
+                                    const calculatedStats = {
+                                        carryDistance: calculateStats(filteredData, 'CarryDistance'),
+                                        totalDistance: calculateStats(filteredData, 'TotalDistance'),
+                                        ballSpeed: calculateStats(filteredData, 'BallSpeed'),
+                                        clubSpeed: calculateStats(filteredData, 'ClubSpeed'),
+                                        smashFactor: calculateStats(filteredData, 'SmashFactor'),
+                                        launchAngle: calculateStats(filteredData, 'LaunchAngle'),
+                                        spinRate: calculateStats(filteredData, 'SpinRate'),
+                                        apex: calculateStats(filteredData, 'Apex'),
+                                        sideCarry: calculateStats(filteredData, 'SideCarry'),
+                                        sideCarryAbs: calculateAbsStat(filteredData, 'SideCarry'),
+                                        launchDirection: calculateStats(filteredData, 'LaunchDirection'),
+                                        spinAxis: calculateStats(filteredData, 'SpinAxis'),
+                                        descentAngle: calculateStats(filteredData, 'DescentAngle'),
+                                        count: filteredData.length,
+                                        originalCount: initialData.length,
+                                        filteredOutCount: filteredCount
+                                    };
+                                    setStats(calculatedStats);
+                                    console.log("Stats calculated."); // Simplified log
+
+                                    // Calculate GIR Probabilities
+                                    const girProbs = calculateGIRProbabilities(filteredData, calculatedStats.carryDistance.avg);
+                                    setGirProbabilities(girProbs);
+
+                                    // Calculate Shot Quality Probabilities
+                                    console.log("Calling calculateShotQualityProbabilities...");
+                                    const qualityProbs = calculateShotQualityProbabilities(filteredData, calculatedStats);
+                                    console.log("Result from calculateShotQualityProbabilities:", qualityProbs);
+
+                                    // ***** THE FIX: Update the state *****
+                                    if (qualityProbs) {
+                                        setShotQualityProbs(qualityProbs); // Store the result in state
+                                        console.log("setShotQualityProbs called successfully.");
+                                    } else {
+                                        console.error("Quality calculation returned null, state not updated.");
+                                    }
+                                    // ************************************
+
+                                    setLoading(false); // Now set loading false *after* trying to set state
+                                },
+                                error: (err) => {
+                                    console.error("PapaParse critical error:", err);
+                                    setError(`Failed to parse CSV data: ${err.message}.`);
+                                    setLoading(false);
+                                }
+                            });
+                        })
+                        .catch(err => {
+                            console.error("Error fetching or processing CSV:", err);
+                            setError(`Failed to load or process ${CSV_FILE_PATH}: ${err.message}`);
+                            setLoading(false);
+                        });
+
+                }, []); // End useEffect
+                // --- Render States ---
+                if (loading) {
+                    return (
+                        <div className="flex flex-col items-center justify-center h-screen">
+                            <div className="loading-spinner"></div>
+                            {/* *** CHANGE: Update loading text *** */}
+                            <p className="text-2xl font-semibold text-gray-400 animate-pulse">Loading Your Mighty 7-Iron Data...</p>
+                        </div>
+                    );
+                }
+
+                if (error) { // Keep error display
+                    return (
+                        <div className="p-4 m-4 border border-red-500 rounded bg-red-900 bg-opacity-30 text-red-300 max-w-2xl mx-auto">
+                            <h1 className="text-xl font-bold mb-2 text-red-400">Failed to Load Report Data</h1>
+                            <p>{error}</p>
+                            <p className="mt-2 text-sm">Please ensure '{CSV_FILE_PATH}' exists in the same directory as this HTML file and is correctly formatted. Use a local web server if loading fails. Check console (F12) for details.</p>
+                        </div>
+                    );
+                }
+
+                if (!data || !stats || data.length === 0 || !stats.count || stats.count === 0) { // Keep data issue display
+                    return (
+                        <div className="p-4 m-4 border border-yellow-500 rounded bg-yellow-900 bg-opacity-30 text-yellow-300 max-w-2xl mx-auto">
+                            <h1 className="text-xl font-bold mb-2 text-yellow-400">Data Issue</h1>
+                            <p>Data was loaded, but no valid shots remain after processing and outlier filtering.</p>
+                            <p className="mt-2 text-sm">Original rows parsed: {stats?.originalCount ?? originalCount}. Rows filtered out: {stats?.filteredOutCount ?? 'N/A'}. Check the CSV data content and the filter criteria in the script.</p>
+                        </div>
+                    );
+                }
+
+                // --- Data Preparation for Charts ---
+                const dispersionData = data.map(d => ({ x: d.SideCarry, y: d.CarryDistance, z: d.SmashFactor || 0, index: d.index, ...d }));
+                const launchSpinData = data.map(d => ({ x: d.LaunchAngle, y: d.SpinRate, z: d.CarryDistance || 0, index: d.index, ...d }));
+                const efficiencyData = data.map(d => ({ x: d.ClubSpeed, y: d.SmashFactor, z: d.CarryDistance || 0, index: d.index, ...d }));
+                const getProbClass = (prob) => {
+                    if (prob >= 70) return 'prob-high';
+                    if (prob >= 40) return 'prob-medium';
+                    return 'prob-low';
+                };
+                // --- Render the Full Report ---
+                console.log("Rendering main report content...");
+                return (
+                    <div className="container mx-auto p-4 md:p-8 max-w-7xl">
+                        {/* *** CHANGE: Update Header & Color *** */}
+                        <header className="mb-8 text-center">
+                            <h1 className="text-4xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">
+                            7-Iron Performance Deconstructed
+                            </h1>
+                             <p className="text-lg text-gray-400">
+                                {stats.count} Shots Analyzed ({stats.filteredOutCount > 0 ? `${stats.filteredOutCount} outliers removed, ` : ''}from {stats.originalCount} total): Insights & Domination Plan
+                            </p>
+                        </header>
+
+                        {/* Summary Section */}
+                        <ErrorBoundary>
+                            <section className="mb-10 bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700">
+                                 {/* *** CHANGE: Update Color *** */}
+                                <h2 className="text-2xl font-bold mb-4 text-green-400 border-b border-green-700 pb-2">Executive Summary: The Lowdown</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-base">
+                                    {/* (Data updates automatically) */}
+                                    <div>
+                                        <p className="font-semibold text-blue-300 mb-1">Distance (Carry):</p>
+                                        <p>Avg: <strong className="text-white">{stats.carryDistance.avg.toFixed(1)} yds</strong></p>
+                                        <p>Median: <strong className="text-gray-300">{stats.carryDistance.median.toFixed(1)} yds</strong></p>
+                                        <p>Range: <strong className="text-gray-300">{stats.carryDistance.min.toFixed(1)} - {stats.carryDistance.max.toFixed(1)} yds</strong></p>
+                                        <p>StdDev: <strong className={stats.carryDistance.stdDev > 12 ? "text-red-400" : "text-yellow-400"}>
+                                            {stats.carryDistance.stdDev.toFixed(1)} yds
+                                        </strong> ({stats.carryDistance.stdDev > 12 ? "High" : (stats.carryDistance.stdDev > 8 ? "Moderate" : "Good")})</p> {/* Adjusted threshold for 7i */}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-orange-300 mb-1">Accuracy & Efficiency:</p>
+                                        <p>Avg Side Miss: <strong className="text-white">{stats.sideCarryAbs.avg.toFixed(1)} yds</strong></p>
+                                        <p>Side Range: <strong className="text-gray-300">{stats.sideCarry.min.toFixed(1)} to {stats.sideCarry.max.toFixed(1)} yds</strong></p>
+                                        <p>Avg Smash: <strong className="text-white">{stats.smashFactor.avg.toFixed(2)}</strong></p>
+                                        <p>Smash StdDev: <strong className={stats.smashFactor.stdDev > 0.06 ? "text-red-400" : "text-yellow-400"}>
+                                            {stats.smashFactor.stdDev.toFixed(2)}
+                                        </strong></p> {/* Adjusted threshold */}
+                                    </div>
+                                     <div>
+                                        <p className="font-semibold text-purple-300 mb-1">Engine:</p>
+                                        <p>Avg Club Speed: <strong className="text-white">{stats.clubSpeed.avg.toFixed(1)} mph</strong></p>
+                                        <p>Avg Ball Speed: <strong className="text-white">{stats.ballSpeed.avg.toFixed(1)} mph</strong></p>
+                                        <p>Avg Launch Angle: <strong className="text-gray-300">{stats.launchAngle.avg.toFixed(1)}°</strong></p>
+                                        <p>Avg Spin Rate: <strong className="text-gray-300">{(stats.spinRate.avg/1000).toFixed(1)}k rpm</strong></p> {/* Back to 'k' format */}
+                                    </div>
+                                </div>
+                            </section>
+                        </ErrorBoundary>
+
+                         {/* Visualizations Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+                            {/* Dispersion Plot */}
+                            <ErrorBoundary>
+                                <div className="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
+                                    {/* *** CHANGE: Update Title *** */}
+                                    <h3 className="text-xl font-semibold mb-4 text-center text-blue-300">Shot Dispersion (Carry) - 7-Iron</h3>
+                                    <ResponsiveContainer width="100%" height={400}>
+                                        <ScatterChart margin={{ top: 20, right: 30, bottom: 40, left: 20 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#4b5563" />
+                                            <XAxis
+                                                type="number" dataKey="x" name="Side Carry" unit=" yds"
+                                                label={{ value: "← Left | Side Carry (yds) | Right →", position: 'insideBottom', offset: -25, fill: '#9ca3af' }}
+                                                stroke="#9ca3af" domain={['auto', 'auto']} tick={{ fill: '#d1d5db' }}
+                                                reversed={false}
+                                                tickFormatter={(value) => `${value > 0 ? '+' : ''}${value.toFixed(0)}`}
+                                            />
+                                            <YAxis
+                                                type="number" dataKey="y" name="Carry Distance" unit=" yds"
+                                                label={{ value: 'Carry Distance (yds)', angle: -90, position: 'insideLeft', offset: -5, fill: '#9ca3af' }}
+                                                stroke="#9ca3af" domain={[0, 'dataMax + 15']} tick={{ fill: '#d1d5db' }} // Reverted padding
+                                            />
+                                            <ZAxis type="number" dataKey="z" name="Smash Factor" range={[50, 350]} />
+                                            <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3', stroke: '#6b7280' }} />
+                                            {/* *** CHANGE: Update Scatter Name *** */}
+                                            <Scatter name="7i Shots" data={dispersionData} shape="circle">
+                                                {dispersionData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={getSmashColor(entry.SmashFactor)} />
+                                                ))}
+                                            </Scatter>
+                                            {/* Reference Lines */}
+                                            <ReferenceLine x={0} stroke="#f87171" strokeWidth={2} label={{ value: 'Target', position: 'top', fill: '#f87171', fontSize: 10 }}/>
+                                            <ReferenceLine y={stats.carryDistance.avg} stroke="#60a5fa" strokeDasharray="4 1" label={{ value: `Avg Carry (${stats.carryDistance.avg.toFixed(0)}y)`, position: 'insideTopRight', fill: '#60a5fa', fontSize: 10, dy: -5 }}/>
+                                             <ReferenceLine x={stats.sideCarry.avg} stroke="#facc15" strokeDasharray="4 1" label={{ value: `Avg Side (${stats.sideCarry.avg.toFixed(1)}y)`, position: 'insideBottomRight', fill: '#facc15', fontSize: 10, dy: 10 }}/>
+                                        </ScatterChart>
+                                    </ResponsiveContainer>
+                                     {/* *** CHANGE: Update description *** */}
+                                    <p className="text-xs text-center text-gray-400 mt-2 px-4">Each dot is a 7-Iron shot. Color indicates Smash Factor quality (Green=High). Size correlates with Smash Factor value.</p>
+                                </div>
+                            </ErrorBoundary>
+
+                            {/* Launch vs Spin Plot */}
+                            <ErrorBoundary>
+                                <div className="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
+                                {/* *** CHANGE: Update Title *** */}
+                                <h3 className="text-xl font-semibold mb-4 text-center text-blue-300">Launch Conditions: Angle vs. Spin - 7-Iron</h3>
+                                <ResponsiveContainer width="100%" height={400}>
+                                    <ScatterChart margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#4b5563"/>
+                                        <XAxis
+                                            type="number" dataKey="x" name="Launch Angle" unit="°"
+                                            label={{ value: "Launch Angle (°)", position: 'insideBottom', offset: -25, fill: '#9ca3af' }}
+                                            stroke="#9ca3af" domain={[0, 'dataMax + 2']} tick={{ fill: '#d1d5db' }} // Reverted domain
+                                        />
+                                        <YAxis
+                                            type="number" dataKey="y" name="Spin Rate" unit=" rpm"
+                                            label={{ value: 'Spin Rate (rpm)', angle: -90, position: 'insideLeft', offset: 0, fill: '#9ca3af' }}
+                                            stroke="#9ca3af" domain={[0, 'dataMax + 500']}
+                                            tickFormatter={(tick) => tick >= 1000 ? `${(tick/1000).toFixed(1)}k` : tick} tick={{ fill: '#d1d5db' }} // Reverted 'k' format
+                                         />
+                                        <ZAxis type="number" dataKey="z" name="Carry Distance" range={[40, 300]}/>
+                                        <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3', stroke: '#6b7280' }}/>
+                                        <Scatter name="Launch/Spin" data={launchSpinData} fill="#a78bfa" shape="circle">
+                                             {launchSpinData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={getSmashColor(entry.SmashFactor)} />
+                                                ))}
+                                        </Scatter>
+                                        {/* *** CHANGE: Update Target Zone for 7-Iron *** */}
+                                        <ReferenceArea
+                                            x1={16} x2={22} // Typical desired launch for 7i
+                                            y1={6000} y2={8000} // Typical desired spin for 7i
+                                            stroke="#facc15" strokeOpacity={0.6} fill="#facc15" fillOpacity={0.05}
+                                            label={{ value: 'General 7i Target Zone', position: 'insideTopLeft', fill: '#facc15', fontSize: 10, dy: 5, dx: 5 }}/>
+                                        {/* Average Point */}
+                                        <ReferenceLine x={stats.launchAngle.avg} stroke="#fb923c" strokeDasharray="2 2" />
+                                        {/* *** CHANGE: Reverted 'k' format for label *** */}
+                                        <ReferenceLine y={stats.spinRate.avg} stroke="#fb923c" strokeDasharray="2 2" label={{ value: `Avg (${stats.launchAngle.avg.toFixed(1)}°, ${(stats.spinRate.avg/1000).toFixed(1)}k)`, position: 'insideBottomRight', fill: '#fb923c', fontSize: 10 }} />
+                                    </ScatterChart>
+                                </ResponsiveContainer>
+                                 {/* *** CHANGE: Update description *** */}
+                                <p className="text-xs text-center text-gray-400 mt-2 px-4">Shows relationship between launch angle and spin rate. Dot size represents Carry Distance. Color indicates Smash Factor. Yellow box is a *general* target window for a 7-Iron.</p>
+                                </div>
+                            </ErrorBoundary>
+
+                            {/* Efficiency Plot */}
+                            <ErrorBoundary>
+                                <div className="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
+                                {/* *** CHANGE: Update Title *** */}
+                                <h3 className="text-xl font-semibold mb-4 text-center text-blue-300">Efficiency: Smash Factor vs. Club Speed - 7-Iron</h3>
+                                <ResponsiveContainer width="100%" height={400}>
+                                    <ScatterChart margin={{ top: 20, right: 20, bottom: 40, left: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#4b5563"/>
+                                        <XAxis
+                                            type="number" dataKey="x" name="Club Speed" unit=" mph"
+                                            label={{ value: "Club Speed (mph)", position: 'insideBottom', offset: -25, fill: '#9ca3af' }}
+                                            stroke="#9ca3af" domain={['dataMin - 2', 'dataMax + 2']} tick={{ fill: '#d1d5db' }} // Reverted domain
+                                        />
+                                        <YAxis
+                                            type="number" dataKey="y" name="Smash Factor"
+                                            label={{ value: 'Smash Factor', angle: -90, position: 'insideLeft', offset: 0, fill: '#9ca3af' }}
+                                            stroke="#9ca3af" domain={[0.9, 1.45]} // *** CHANGE: Adjusted domain for 7i ***
+                                            tickFormatter={(tick) => tick.toFixed(2)} tick={{ fill: '#d1d5db' }}
+                                        />
+                                        <ZAxis type="number" dataKey="z" name="Carry Distance" range={[40, 300]}/>
+                                        <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3', stroke: '#6b7280' }}/>
+                                        <Scatter name="Efficiency" data={efficiencyData} shape="triangle">
+                                            {efficiencyData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={getSmashColor(entry.y)} />
+                                            ))}
+                                        </Scatter>
+                                        {/* *** CHANGE: Update Efficiency Zone Reference *** */}
+                                        <ReferenceLine y={1.30} stroke="#4ade80" strokeDasharray="3 3" label={{ value: 'Efficient Zone (1.30+)', position: 'insideTopRight', fill: '#4ade80', fontSize: 10 }} />
+                                        <ReferenceLine y={stats.smashFactor.avg} stroke="#f87171" strokeDasharray="4 1" label={{ value: `Avg (${stats.smashFactor.avg.toFixed(2)})`, position: 'insideBottomRight', fill: '#f87171', fontSize: 10, dy: 10 }} />
+                                    </ScatterChart>
+                                </ResponsiveContainer>
+                                {/* *** CHANGE: Update description *** */}
+                                <p className="text-xs text-center text-gray-400 mt-2 px-4">Relates Smash Factor to Club Speed. Dot color indicates Smash Factor quality (Green=High). Size represents Carry Distance. Aim for 1.30+ Smash with a 7-Iron.</p>
+                                </div>
+                            </ErrorBoundary>
+
+                            {/* Key Metrics Table */}
+                            <ErrorBoundary>
+                                <div className="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700 overflow-x-auto">
+                                    {/* *** CHANGE: Update Title *** */}
+                                    <h3 className="text-xl font-semibold mb-4 text-center text-blue-300">7-Iron Key Metrics Breakdown</h3>
+                                    <table className="w-full text-sm text-left text-gray-300 whitespace-nowrap">
+                                        <thead className="text-xs text-gray-400 uppercase bg-gray-700">
+                                        <tr>
+                                            <th scope="col" className="px-4 py-2">Metric</th>
+                                            <th scope="col" className="px-4 py-2 text-right">Average</th>
+                                            <th scope="col" className="px-4 py-2 text-right">Median</th>
+                                            <th scope="col" className="px-4 py-2 text-right">Std Dev</th>
+                                            <th scope="col" className="px-4 py-2 text-right">Min</th>
+                                            <th scope="col" className="px-4 py-2 text-right">Max</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                            {[
+                                                { key: 'carryDistance', name: 'Carry Distance (yds)', factor: false },
+                                                { key: 'totalDistance', name: 'Total Distance (yds)', factor: false },
+                                                { key: 'sideCarry', name: 'Side Carry (yds)', factor: false },
+                                                { key: 'sideCarryAbs', name: 'Avg Side Miss (yds)', factor: false, avgOnly: true },
+                                                { key: 'clubSpeed', name: 'Club Speed (mph)', factor: false },
+                                                { key: 'ballSpeed', name: 'Ball Speed (mph)', factor: false },
+                                                { key: 'smashFactor', name: 'Smash Factor', factor: true },
+                                                { key: 'launchAngle', name: 'Launch Angle (°)', factor: false },
+                                                { key: 'launchDirection', name: 'Launch Direction (°)', factor: false },
+                                                { key: 'spinRate', name: 'Spin Rate (rpm)', factor: false, rpm: true }, // 0 decimals for RPM
+                                                { key: 'spinAxis', name: 'Spin Axis (°)', factor: false },
+                                                { key: 'apex', name: 'Apex (ft)', factor: false },
+                                                { key: 'descentAngle', name: 'Descent Angle (°)', factor: false },
+                                            ].map(({ key, name, factor, avgOnly = false, rpm = false }) => {
+                                                const value = stats[key];
+                                                if (!value || value.avg === undefined || isNaN(value.avg)) return null;
+                                                const decimals = factor ? 2 : (rpm ? 0 : 1);
+                                                return (
+                                                    <tr key={key} className="bg-gray-800 border-b border-gray-700 hover:bg-gray-600 transition duration-150 ease-in-out">
+                                                        <td className="px-4 py-2 font-medium text-white">{name}</td>
+                                                        <td className="px-4 py-2 text-right">{value.avg.toFixed(decimals)}</td>
+                                                        {!avgOnly && <td className="px-4 py-2 text-right">{value.median.toFixed(decimals)}</td>}
+                                                        {!avgOnly && <td className="px-4 py-2 text-right">{value.stdDev.toFixed(decimals)}</td>}
+                                                        {!avgOnly && <td className="px-4 py-2 text-right">{value.min.toFixed(decimals)}</td>}
+                                                        {!avgOnly && <td className="px-4 py-2 text-right">{value.max.toFixed(decimals)}</td>}
+                                                        {avgOnly && <><td className="px-4 py-2 text-right text-gray-500">-</td><td className="px-4 py-2 text-right text-gray-500">-</td><td className="px-4 py-2 text-right text-gray-500">-</td><td className="px-4 py-2 text-right text-gray-500">-</td></>}
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                    <p className="text-xs text-center text-gray-400 mt-2">Median shows 'typical' shot. Std Dev shows consistency (lower is better).</p>
+                                </div>
+                            </ErrorBoundary>
+                        </div>
+                    {/* *** Combined Probability Section *** */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                        {/* *** NEW: Green Probability Section *** */}
+                        <ErrorBoundary>
+                            <section className="mb-10 bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700">
+                                <h2 className="text-2xl font-bold mb-4 text-yellow-400 border-b border-yellow-700 pb-2">Estimated Green in Regulation (GIR) Probability</h2>
+                                <p className="text-sm text-gray-400 mb-4">Based on your observed shot dispersion and assuming a target green size of approx. 30 yards wide x 30 yards deep.</p>
+                                {girProbabilities.length > 0 ? (
+                                    <ul className="list-disc list-inside space-y-2 text-base text-gray-300">
+                                        {girProbabilities.map(({ distance, probability }) => (
+                                            <li key={distance}>
+                                                From <strong className="text-white">{distance} yds</strong>:
+                                                <span className={`ml-2 font-semibold ${probability > 60 ? 'text-green-400' : probability > 30 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                                    {probability.toFixed(1)}%
+                                                </span> chance of hitting the green.
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-gray-500">Could not calculate probabilities.</p>
+                                )}
+                                <p className="text-xs text-gray-500 mt-3">* This is an estimate based on your session data and a standard green size. Actual on-course results may vary.</p>
+                            </section>
+                        </ErrorBoundary>
+
+                            {/* *** NEW: Shot Quality Probability Section *** */}
+                             <ErrorBoundary>
+                                <section className="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700 h-full"> {/* Added h-full */}
+                                    <h2 className="text-xl font-bold mb-4 text-indigo-400 border-b border-indigo-700 pb-2">Shot Quality Probabilities</h2>
+                                    <p className="text-sm text-gray-400 mb-4">Likelihood of achieving key consistency metrics.</p>
+                                    {shotQualityProbs ? (
+                                        <ul className="list-none space-y-3 text-base text-gray-300">
+                                            <li className="flex justify-between items-center">
+                                                <span>Distance Control (±{shotQualityProbs.distanceWindow} yds of avg):</span>
+                                                <span className={`font-semibold text-lg ${getProbClass(shotQualityProbs.distanceControlProb)}`}>
+                                                    {shotQualityProbs.distanceControlProb.toFixed(1)}%
+                                                </span>
+                                            </li>
+                                            <li className="flex justify-between items-center">
+                                                <span>Accuracy (±{shotQualityProbs.accuracyWindow} yds side):</span>
+                                                <span className={`font-semibold text-lg ${getProbClass(shotQualityProbs.accuracyProb)}`}>
+                                                    {shotQualityProbs.accuracyProb.toFixed(1)}%
+                                                </span>
+                                            </li>
+                                            <li className="flex justify-between items-center">
+                                                <span>High Efficiency (Smash ≥ {shotQualityProbs.smashThreshold.toFixed(2)}):</span>
+                                                <span className={`font-semibold text-lg ${getProbClass(shotQualityProbs.highSmashProb)}`}>
+                                                    {shotQualityProbs.highSmashProb.toFixed(1)}%
+                                                </span>
+                                            </li>
+                                             <li className="flex justify-between items-center border-t border-gray-700 pt-3 mt-2">
+                                                <strong className="text-indigo-300">"Stock Shot" (Good Dist & Acc):</strong>
+                                                <span className={`font-semibold text-xl ${getProbClass(shotQualityProbs.stockShotProb)}`}>
+                                                    {shotQualityProbs.stockShotProb.toFixed(1)}%
+                                                </span>
+                                            </li>
+                                        </ul>
+                                    ) : (
+                                        <p className="text-gray-500">Could not calculate quality probabilities.</p>
+                                    )}
+                                     <p className="text-xs text-gray-500 mt-3">*Based on session data and defined thresholds.</p>
+                                </section>
+                            </ErrorBoundary>
+                        </div>
+                        {/* *** CHANGE: Actionable Tips for 7-Iron *** */}
+                        <ErrorBoundary>
+                             <section className="mb-10 bg-gradient-to-br from-gray-800 to-gray-900 p-6 rounded-xl shadow-2xl border border-gray-700">
+                                 {/* *** CHANGE: Update Title & Color *** */}
+                                <h2 className="text-2xl font-bold mb-4 text-green-400 border-b border-green-700 pb-2">The Domination Plan: 7-Iron Insights</h2>
+                                <ul className="list-none space-y-4 text-base">
+                                    {/* Reverted insights based on the original 7i example, using the 'stats' object */}
+                                    <li className="flex items-start">
+                                        <span className="text-yellow-400 text-xl mr-3 mt-1">🎯</span>
+                                        <div>
+                                            <strong className="text-yellow-300">Tame the Beast (Consistency):</strong> The <strong className="text-white">{stats.carryDistance.stdDev.toFixed(0)} yd carry StdDev</strong> suggests inconsistent strikes. Your primary focus should be improving <strong className="text-white">Smash Factor</strong> consistency (Avg: {stats.smashFactor.avg.toFixed(2)}, StdDev: <strong className={stats.smashFactor.stdDev > 0.06 ? "text-red-400" : "text-yellow-400"}>{stats.smashFactor.stdDev.toFixed(2)}</strong>).
+                                            <br/><span className="text-gray-400 text-sm pl-4 block mt-1">➡️ Action: Center-face contact drills (impact tape/spray). Prioritize solid strikes over raw speed for now. Feel the difference between center, heel, and toe.</span>
+                                        </div>
+                                    </li>
+                                    <li className="flex items-start">
+                                        <span className="text-yellow-400 text-xl mr-3 mt-1">↔️</span>
+                                         <div>
+                                            <strong className="text-yellow-300">Tighten Dispersion:</strong> An average miss of <strong className="text-white">{stats.sideCarryAbs.avg.toFixed(1)} yds</strong> and a wide range ({stats.sideCarry.min.toFixed(0)} to {stats.sideCarry.max.toFixed(0)} yds) point to both start line and curvature variability. Check your Avg Launch Dir ({stats.launchDirection.avg.toFixed(1)}°) and Spin Axis ({stats.spinAxis.avg.toFixed(1)}°) for tendencies.
+                                            <br/><span className="text-gray-400 text-sm pl-4 block mt-1">➡️ Action: Use alignment sticks for setup consistency (feet, hips, shoulders). Work on controlling the clubface angle relative to your swing path at impact. Identify and address your primary miss pattern (push/pull/hook/slice).</span>
+                                        </div>
+                                    </li>
+                                     <li className="flex items-start">
+                                        <span className="text-yellow-400 text-xl mr-3 mt-1">🚀</span>
+                                         <div>
+                                            <strong className="text-yellow-300">Optimize Launch & Spin:</strong> Check the *range* of launch ({stats.launchAngle.min.toFixed(1)}°- {stats.launchAngle.max.toFixed(1)}°) and spin ({(stats.spinRate.min/1000).toFixed(1)}k-{(stats.spinRate.max/1000).toFixed(1)}k rpm). Large ranges indicate varied strikes (thin, heavy, face location). Aim for a consistent window.
+                                            <br/><span className="text-gray-400 text-sm pl-4 block mt-1">➡️ Action: Improve attack angle consistency. Target a repeatable launch window (e.g., 16-22°) & spin (e.g., 6k-8k rpm) by enhancing strike quality and dynamic loft delivery.</span>
+                                        </div>
+                                    </li>
+                                    <li className="flex items-start">
+                                        <span className="text-yellow-400 text-xl mr-3 mt-1">⚡</span>
+                                         <div>
+                                            <strong className="text-yellow-300">Leverage Speed Potential:</strong> Your club speed (Avg {stats.clubSpeed.avg.toFixed(1)} mph, Max {stats.clubSpeed.max.toFixed(1)} mph) provides a good base. Improving efficiency (Smash Factor) will unlock more distance from this speed.
+                                            <br/><span className="text-gray-400 text-sm pl-4 block mt-1">➡️ Action: Focus on getting Smash Factor consistently above 1.30. Better strikes yield more yards without needing to swing harder initially.</span>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </section>
+                        </ErrorBoundary>
+
+                        {/* *** CHANGE: Conclusion for 7-Iron & Color *** */}
+                        <ErrorBoundary>
+                            <footer className="text-center pt-6 border-t border-gray-700">
+                                <h2 className="text-2xl font-bold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500">Final Verdict: 7-Iron</h2>
+                                <p className="text-lg text-gray-300 mb-2">You have a solid engine ({stats.clubSpeed.avg.toFixed(0)} mph avg speed) and show potential ({stats.carryDistance.max.toFixed(0)} yds carry!).</p>
+                                <p className="text-lg text-gray-300 mb-2">Your #1 Mission: <strong className="text-yellow-300 uppercase tracking-wider">Consistency through Strike Quality.</strong></p>
+                                <p className="text-lg text-gray-400">Focus relentlessly on <strong className="text-white">Smash Factor (> 1.30)</strong> and <strong className="text-white">Start Line Control</strong>. Nail these, and the distance + accuracy will follow.</p>
+                            </footer>
+                        </ErrorBoundary>
+                    </div>
+                );
+            }
+
+
+            // --- Initialize React App (Keep as is) ---
+            console.log("Attempting to render React app...");
+            try {
+                const container = document.getElementById('root');
+                if (!container) { throw new Error("Root element 'root' not found."); }
+                const root = ReactDOM.createRoot(container);
+                root.render( <ErrorBoundary> <App /> </ErrorBoundary> );
+                console.log("React app render initiated.");
+            } catch (err) {
+                console.error("Failed to initialize React:", err);
+                const rootElement = document.getElementById('root');
+                 if (rootElement) {
+                    rootElement.innerHTML = `
+                        <div class="error-message">
+                            <h1>Fatal React Error</h1>
+                            <p>Could not initialize the React application.</p>
+                            <p>Error: <code>${err.message}</code></p>
+                            <p>Check console (F12) for details.</p>
+                        </div>`;
+                } else {
+                    document.body.innerHTML = `<div class="error-message"><h1>Fatal Error</h1><p>Root container missing & React failed.</p><p>Error: <code>${err.message}</code></p></div>`;
+                }
+            }
+        } // End of runApplication function
+
+        // --- Script Execution (Keep as is) ---
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', runApplication);
+        } else {
+            runApplication();
+        }
+
+    </script>
+</body>
+</html>
