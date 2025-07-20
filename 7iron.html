@@ -82,11 +82,6 @@
         .swing-path {
             stroke-dasharray: 1000;
             stroke-dashoffset: 1000;
-            animation: dash 1.5s ease-in-out forwards;
-        }
-        
-        @keyframes dash {
-            to { stroke-dashoffset: 0; }
         }
         
         .fade-in {
@@ -177,7 +172,6 @@
             stroke-linecap: round;
             stroke-width: 2;
         }
-        /* Add to existing styles */
         @keyframes ballFlight {
             0% { transform: translate(0, 0) scale(1); opacity: 1; }
             100% { transform: translate(100px, -100px) scale(0.5); opacity: 0; }
@@ -189,6 +183,13 @@
 
         #impact-flash {
             transition: all 0.2s ease-out;
+        }
+        .quality-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
         }
     </style>
 </head>
@@ -208,19 +209,6 @@
         </div>
     </div>
     <script type="text/babel">
-        // Utility functions and components would be here
-        // They've been omitted for brevity in this example
-        
-        // The full implementation would include:
-        // 1. Enhanced data processing functions
-        // 2. More comprehensive statistics calculations
-        // 3. Additional visualization components
-        // 4. Personalized recommendation engine
-        // 5. Interactive elements for shot exploration
-        
-        // The complete code would be approximately 1200 lines
-        // This example shows the structure and key enhancements
-        
         function App() {
             const [data, setData] = React.useState(null);
             const [stats, setStats] = React.useState(null);
@@ -229,59 +217,56 @@
             const [selectedShot, setSelectedShot] = React.useState(null);
             const [activeTab, setActiveTab] = React.useState('overview');
             
-React.useEffect(() => {
-    Papa.parse('7iron3.csv', {
-        download: true,
-        header: true,
-        skipEmptyLines: true,
-        dynamicTyping: true,
-        complete: function(results) {
-            // Initial filter for valid data
-            let validData = results.data
-                .filter(row => row['Carry Distance'] && !isNaN(row['Carry Distance']))
-                .map((row, index) => ({
-                    index: index + 1,
-                    CarryDistance: row['Carry Distance'],
-                    TotalDistance: row['Total Distance'],
-                    BallSpeed: row['Ball Speed'],
-                    LaunchAngle: row['Launch Angle'],
-                    LaunchDirection: row['Launch Direction'],
-                    Apex: row['Apex'],
-                    SideCarry: row['Side Carry'],
-                    ClubSpeed: row['Club Speed'],
-                    SmashFactor: row['Smash Factor'],
-                    DescentAngle: row['Descent Angle'],
-                    AttackAngle: row['Attack Angle'],
-                    ClubPath: row['Club Path'],
-                    SpinRate: row['Spin Rate'],
-                    SpinAxis: row['Spin Axis']
-                }));
-            
-            // Calculate mean and standard deviation for carry distance
-            const carryDistances = validData.map(shot => shot.CarryDistance).filter(val => typeof val === 'number' && !isNaN(val));
-            const mean = carryDistances.reduce((a, b) => a + b, 0) / carryDistances.length;
-            const stdDev = Math.sqrt(carryDistances.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / carryDistances.length);
-            
-            // Filter out shots beyond 1.5 standard deviations for Carry Distance
-            const filteredData = validData.filter(shot => {
-                if (isNaN(shot.CarryDistance) || isNaN(mean) || isNaN(stdDev) || stdDev === 0) {
-                    return true; // Keep if stdDev is zero or values are problematic (should be rare with initial filter)
-                }
-                const zScore = Math.abs(shot.CarryDistance - mean) / stdDev;
-                return zScore <= 1.5; // Keep shots within 1.5 standard deviations
-            });
-            
-            setData(filteredData);
-            const calculatedStats = calculateStats(filteredData);
-            setStats(calculatedStats);
-            setLoading(false);
-        },
-        error: function(error) {
-            setError(error);
-            setLoading(false);
-        }
-    });
-}, []);
+            React.useEffect(() => {
+                Papa.parse('7iron3.csv', {
+                    download: true,
+                    header: true,
+                    skipEmptyLines: true,
+                    dynamicTyping: true,
+                    complete: function(results) {
+                        let validData = results.data
+                            .filter(row => row['Carry Distance'] && !isNaN(row['Carry Distance']))
+                            .map((row, index) => ({
+                                index: index + 1,
+                                CarryDistance: row['Carry Distance'],
+                                TotalDistance: row['Total Distance'],
+                                BallSpeed: row['Ball Speed'],
+                                LaunchAngle: row['Launch Angle'],
+                                LaunchDirection: row['Launch Direction'],
+                                Apex: row['Apex'],
+                                SideCarry: row['Side Carry'],
+                                ClubSpeed: row['Club Speed'],
+                                SmashFactor: row['Smash Factor'],
+                                DescentAngle: row['Descent Angle'],
+                                AttackAngle: row['Attack Angle'],
+                                ClubPath: row['Club Path'],
+                                SpinRate: row['Spin Rate'],
+                                SpinAxis: row['Spin Axis']
+                            }));
+                        
+                        const carryDistances = validData.map(shot => shot.CarryDistance).filter(val => typeof val === 'number' && !isNaN(val));
+                        const mean = carryDistances.reduce((a, b) => a + b, 0) / carryDistances.length;
+                        const stdDev = Math.sqrt(carryDistances.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / carryDistances.length);
+                        
+                        const filteredData = validData.filter(shot => {
+                            if (isNaN(shot.CarryDistance) || isNaN(mean) || isNaN(stdDev) || stdDev === 0) {
+                                return true;
+                            }
+                            const zScore = Math.abs(shot.CarryDistance - mean) / stdDev;
+                            return zScore <= 1.5;
+                        });
+                        
+                        setData(filteredData);
+                        const calculatedStats = calculateStats(filteredData);
+                        setStats(calculatedStats);
+                        setLoading(false);
+                    },
+                    error: function(error) {
+                        setError(error);
+                        setLoading(false);
+                    }
+                });
+            }, []);
             
             if (loading) {
                 return (
@@ -299,7 +284,7 @@ React.useEffect(() => {
                 );
             }
             
-            if (error || !stats) { // Added !stats check
+            if (error || !stats) {
                 return (
                     <div class="flex flex-col items-center justify-center h-screen p-4">
                         <div class="bg-red-900/30 border border-red-700 rounded-xl p-6 max-w-md text-center">
@@ -322,7 +307,6 @@ React.useEffect(() => {
             
             return (
                 <div class="container mx-auto px-4 py-8 max-w-7xl">
-                    {/* Header */}
                     <header class="mb-10 text-center">
                         <h1 class="text-4xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-cyan-300">
                             <i class="fas fa-golf-ball mr-3"></i>7-Iron Performance Analysis
@@ -344,7 +328,6 @@ React.useEffect(() => {
                         </div>
                     </header>
                     
-                    {/* Performance Summary */}
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
                         <div class="stat-card p-5 fade-in" style={{animationDelay: "0.1s"}}>
                             <div class="flex justify-between items-start">
@@ -386,8 +369,9 @@ React.useEffect(() => {
                                 </div>
                                 <i class="fas fa-fire text-red-400 text-xl"></i>
                             </div>
-                            <div class="mt-3 text-xs text-slate-400">
-                                Avg. Smash: <span class="font-bold text-amber-400">{stats.smashFactor.avg.toFixed(2)}</span>
+                             <div class="mt-3 text-xs text-slate-400 flex justify-between items-center">
+                                <span>Avg. Smash: <span class="font-bold text-amber-400">{stats.smashFactor.avg.toFixed(2)}</span></span>
+                                <QualityBadge quality={getSmashFactorQuality(stats.smashFactor.avg).label} />
                             </div>
                             <div class="performance-gauge mt-2">
                                 <div class="gauge-fill bg-gradient-to-r from-red-500 to-orange-400" style={{width: `${stats.smashQuality.toFixed(0)}%`}}></div>
@@ -411,35 +395,21 @@ React.useEffect(() => {
                         </div>
                     </div>
                     
-                    {/* Navigation Tabs */}
                     <div class="flex border-b border-slate-700 mb-8">
-                        <button 
-                            class={`px-4 py-2 font-medium rounded-t-lg transition-colors ${activeTab === 'overview' ? 'text-green-400 border-b-2 border-green-400 bg-slate-800' : 'text-slate-400 hover:text-slate-300'}`}
-                            onClick={() => setActiveTab('overview')}
-                        >
+                        <button class={`px-4 py-2 font-medium rounded-t-lg transition-colors ${activeTab === 'overview' ? 'text-green-400 border-b-2 border-green-400 bg-slate-800' : 'text-slate-400 hover:text-slate-300'}`} onClick={() => setActiveTab('overview')}>
                             <i class="fas fa-home mr-2"></i>Overview
                         </button>
-                        <button 
-                            class={`px-4 py-2 font-medium rounded-t-lg transition-colors ${activeTab === 'dispersion' ? 'text-green-400 border-b-2 border-green-400 bg-slate-800' : 'text-slate-400 hover:text-slate-300'}`}
-                            onClick={() => setActiveTab('dispersion')}
-                        >
+                        <button class={`px-4 py-2 font-medium rounded-t-lg transition-colors ${activeTab === 'dispersion' ? 'text-green-400 border-b-2 border-green-400 bg-slate-800' : 'text-slate-400 hover:text-slate-300'}`} onClick={() => setActiveTab('dispersion')}>
                             <i class="fas fa-bullseye mr-2"></i>Dispersion
                         </button>
-                        <button 
-                            class={`px-4 py-2 font-medium rounded-t-lg transition-colors ${activeTab === 'swing' ? 'text-green-400 border-b-2 border-green-400 bg-slate-800' : 'text-slate-400 hover:text-slate-300'}`}
-                            onClick={() => setActiveTab('swing')}
-                        >
+                        <button class={`px-4 py-2 font-medium rounded-t-lg transition-colors ${activeTab === 'swing' ? 'text-green-400 border-b-2 border-green-400 bg-slate-800' : 'text-slate-400 hover:text-slate-300'}`} onClick={() => setActiveTab('swing')}>
                             <i class="fas fa-golf-ball mr-2"></i>Swing Analysis
                         </button>
-                        <button 
-                            class={`px-4 py-2 font-medium rounded-t-lg transition-colors ${activeTab === 'recommend' ? 'text-green-400 border-b-2 border-green-400 bg-slate-800' : 'text-slate-400 hover:text-slate-300'}`}
-                            onClick={() => setActiveTab('recommend')}
-                        >
+                        <button class={`px-4 py-2 font-medium rounded-t-lg transition-colors ${activeTab === 'recommend' ? 'text-green-400 border-b-2 border-green-400 bg-slate-800' : 'text-slate-400 hover:text-slate-300'}`} onClick={() => setActiveTab('recommend')}>
                             <i class="fas fa-lightbulb mr-2"></i>Recommendations
                         </button>
                     </div>
                     
-                    {/* Tab Content */}
                     <div class="mb-10">
                         {activeTab === 'overview' && <OverviewTab stats={stats} data={data} />}
                         {activeTab === 'dispersion' && <DispersionTab stats={stats} data={data} setSelectedShot={setSelectedShot} />}
@@ -447,82 +417,41 @@ React.useEffect(() => {
                         {activeTab === 'recommend' && <RecommendationsTab stats={stats} />}
                     </div>
                     
-                    {/* Selected Shot Detail */}
                     {selectedShot && (
                         <div class="dashboard-card p-6 mb-10 fade-in">
                             <div class="flex justify-between items-start mb-4">
-                                <h3 class="text-xl font-bold text-green-400">
-                                    <i class="fas fa-crosshairs mr-2"></i>Shot # {selectedShot.index} Details
-                                </h3>
-                                <button 
-                                    class="text-slate-400 hover:text-slate-300"
-                                    onClick={() => setSelectedShot(null)}
-                                >
-                                    <i class="fas fa-times"></i>
-                                </button>
+                                <h3 class="text-xl font-bold text-green-400"><i class="fas fa-crosshairs mr-2"></i>Shot # {selectedShot.index} Details</h3>
+                                <button class="text-slate-400 hover:text-slate-300" onClick={() => setSelectedShot(null)}><i class="fas fa-times"></i></button>
                             </div>
-                            
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div class="bg-slate-800/50 rounded-lg p-4">
                                     <h4 class="text-slate-400 text-sm mb-2">Distance Metrics</h4>
                                     <div class="space-y-2">
-                                        <div class="flex justify-between">
-                                            <span>Carry Distance:</span>
-                                            <span class="font-bold">{selectedShot.CarryDistance} yds</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span>Total Distance:</span>
-                                            <span class="font-bold">{selectedShot.TotalDistance} yds</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span>Side Carry:</span>
-                                            <span class="font-bold">{selectedShot.SideCarry > 0 ? '+' : ''}{selectedShot.SideCarry.toFixed(1)} yds</span>
-                                        </div>
+                                        <div class="flex justify-between"><span>Carry Distance:</span><span class="font-bold">{selectedShot.CarryDistance} yds</span></div>
+                                        <div class="flex justify-between"><span>Total Distance:</span><span class="font-bold">{selectedShot.TotalDistance} yds</span></div>
+                                        <div class="flex justify-between"><span>Side Carry:</span><span class="font-bold">{selectedShot.SideCarry > 0 ? '+' : ''}{selectedShot.SideCarry.toFixed(1)} yds</span></div>
                                     </div>
                                 </div>
-                                
                                 <div class="bg-slate-800/50 rounded-lg p-4">
                                     <h4 class="text-slate-400 text-sm mb-2">Swing Metrics</h4>
                                     <div class="space-y-2">
-                                        <div class="flex justify-between">
-                                            <span>Club Speed:</span>
-                                            <span class="font-bold">{selectedShot.ClubSpeed} mph</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span>Smash Factor:</span>
-                                            <span class="font-bold" style={{color: getSmashColor(selectedShot.SmashFactor)}}>
-                                                {selectedShot.SmashFactor.toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span>Attack Angle:</span>
-                                            <span class="font-bold">{selectedShot.AttackAngle.toFixed(1)}°</span>
-                                        </div>
+                                        <div class="flex justify-between"><span>Club Speed:</span><span class="font-bold">{selectedShot.ClubSpeed} mph</span></div>
+                                        <div class="flex justify-between"><span>Smash Factor:</span><span class="font-bold" style={{color: getSmashColor(selectedShot.SmashFactor)}}>{selectedShot.SmashFactor.toFixed(2)}</span></div>
+                                        <div class="flex justify-between"><span>Attack Angle:</span><span class="font-bold">{selectedShot.AttackAngle.toFixed(1)}°</span></div>
                                     </div>
                                 </div>
-                                
                                 <div class="bg-slate-800/50 rounded-lg p-4">
                                     <h4 class="text-slate-400 text-sm mb-2">Ball Flight</h4>
                                     <div class="space-y-2">
-                                        <div class="flex justify-between">
-                                            <span>Launch Angle:</span>
-                                            <span class="font-bold">{selectedShot.LaunchAngle.toFixed(1)}°</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span>Spin Rate:</span>
-                                            <span class="font-bold">{selectedShot.SpinRate.toFixed(0)} rpm</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span>Peak Height:</span>
-                                            <span class="font-bold">{selectedShot.Apex.toFixed(1)} ft</span>
-                                        </div>
+                                        <div class="flex justify-between"><span>Launch Angle:</span><span class="font-bold">{selectedShot.LaunchAngle.toFixed(1)}°</span></div>
+                                        <div class="flex justify-between"><span>Spin Rate:</span><span class="font-bold">{selectedShot.SpinRate.toFixed(0)} rpm</span></div>
+                                        <div class="flex justify-between"><span>Peak Height:</span><span class="font-bold">{selectedShot.Apex.toFixed(1)} ft</span></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
                     
-                    {/* Footer */}
                     <footer class="pt-8 border-t border-slate-700 mt-10 text-center">
                         <div class="text-lg text-slate-300 mb-4">
                             <span class="font-bold text-amber-300">Consistency</span> + <span class="font-bold text-green-400">Precision</span> + <span class="font-bold text-cyan-400">Power</span> = <span class="font-bold text-white">LOWER SCORES</span>
@@ -535,241 +464,94 @@ React.useEffect(() => {
             );
         }
         
-        // Component for Overview Tab
-        function OverviewTab({ stats, data }) {
-            const bestRange = stats.girProbabilities.reduce((best, current) => 
-                current.probability > best.probability ? current : best, 
-                {probability: 0, distance: 'N/A'}
-            );
+        function QualityBadge({ quality }) {
+            const qualityStyles = {
+                Great: 'bg-green-500/20 text-green-300', Good: 'bg-cyan-500/20 text-cyan-300',
+                Average: 'bg-amber-500/20 text-amber-300', Bad: 'bg-orange-500/20 text-orange-300',
+                Horrible: 'bg-red-500/20 text-red-300', Default: 'bg-slate-600/20 text-slate-300'
+            };
+            const style = qualityStyles[quality] || qualityStyles.Default;
+            return <span className={`quality-badge ${style}`}>{quality}</span>;
+        }
 
+        function OverviewTab({ stats, data }) {
             const metricsForTable = [
-                { label: "Carry Distance (yds)", path: "carryDistance", precision: 1 },
-                { label: "Total Distance (yds)", path: "totalDistance", precision: 1 },
-                { label: "Ball Speed (mph)", path: "ballSpeed", precision: 1 },
-                { label: "Club Speed (mph)", path: "clubSpeed", precision: 1 },
-                { label: "Smash Factor", path: "smashFactor", precision: 2 },
-                { label: "Launch Angle (°)", path: "launchAngle", precision: 1 },
-                { label: "Spin Rate (rpm)", path: "spinRate", precision: 0 },
-                { label: "Apex (ft)", path: "apex", precision: 1 },
-                { label: "Attack Angle (°)", path: "attackAngle", precision: 1 },
-                { label: "Club Path (°)", path: "clubPath", precision: 1 },
-                { label: "Descent Angle (°)", path: "descentAngle", precision: 1 },
-                { label: "Side Carry (yds)", path: "sideCarry", precision: 1 },
+                { label: "Carry Distance (yds)", path: "carryDistance", precision: 1 }, { label: "Total Distance (yds)", path: "totalDistance", precision: 1 },
+                { label: "Ball Speed (mph)", path: "ballSpeed", precision: 1 }, { label: "Club Speed (mph)", path: "clubSpeed", precision: 1 },
+                { label: "Smash Factor", path: "smashFactor", precision: 2 }, { label: "Launch Angle (°)", path: "launchAngle", precision: 1 },
+                { label: "Spin Rate (rpm)", path: "spinRate", precision: 0 }, { label: "Apex (ft)", path: "apex", precision: 1 },
+                { label: "Attack Angle (°)", path: "attackAngle", precision: 1 }, { label: "Club Path (°)", path: "clubPath", precision: 1 },
+                { label: "Descent Angle (°)", path: "descentAngle", precision: 1 }, { label: "Side Carry (yds)", path: "sideCarry", precision: 1 },
             ];
 
             return (
                 <div class="space-y-8">
                     <div class="dashboard-card p-6 fade-in">
-                        <div class="flex flex-col md:flex-row gap-6">
-                            <div class="md:w-1/2">
-                                <h3 class="text-xl font-bold text-cyan-300 mb-4">
-                                    <i class="fas fa-chart-line mr-2"></i>Performance Summary
-                                </h3>
-                                
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <h3 class="text-xl font-bold text-cyan-300 mb-4"><i class="fas fa-chart-line mr-2"></i>Performance Summary</h3>
                                 <div class="grid grid-cols-2 gap-4 mb-6">
-                                    <div class="bg-slate-800/40 rounded-lg p-4">
-                                        <div class="text-slate-400 text-sm mb-1">Consistency Score</div>
-                                        <div class="text-2xl font-bold text-green-400">{stats.consistencyScore.toFixed(0)}/100</div>
-                                        <div class="text-xs text-slate-500 mt-1">Distance + Accuracy</div>
-                                    </div>
-                                    <div class="bg-slate-800/40 rounded-lg p-4">
-                                        <div class="text-slate-400 text-sm mb-1">Peak Yardage Range</div>
-                                        <div class="text-2xl font-bold text-green-400">{bestRange.distance}</div>
-                                        <div class="text-xs text-slate-500 mt-1">
-                                            {bestRange.probability.toFixed(0)}% of shots
-                                        </div>
-                                    </div>
-                                    <div class="bg-slate-800/40 rounded-lg p-4">
-                                        <div class="text-slate-400 text-sm mb-1">Stock Shot %</div>
-                                        <div class="text-2xl font-bold text-blue-400">{stats.stockShotProb.toFixed(0)}%</div>
-                                        <div class="text-xs text-slate-500 mt-1">Good distance & accuracy</div>
-                                    </div>
-                                    <div class="bg-slate-800/40 rounded-lg p-4">
-                                        <div class="text-slate-400 text-sm mb-1">Strokes Gained</div>
-                                        <div class="text-2xl font-bold text-purple-400">+0.42</div>
-                                        <div class="text-xs text-slate-500 mt-1">vs. 10 handicap</div>
-                                    </div>
+                                    <div class="bg-slate-800/40 rounded-lg p-4"><div class="text-slate-400 text-sm mb-1">Consistency Score</div><div class="text-2xl font-bold text-green-400">{stats.consistencyScore.toFixed(0)}/100</div><div class="text-xs text-slate-500 mt-1">Distance + Accuracy</div></div>
+                                    <div class="bg-slate-800/40 rounded-lg p-4"><div class="text-slate-400 text-sm mb-1">Strokes Gained</div><div class="text-2xl font-bold text-purple-400">+0.42</div><div class="text-xs text-slate-500 mt-1">vs. 10 Handicap</div></div>
                                 </div>
-                                
                                 <h4 class="text-slate-400 font-bold mb-2">Miss Pattern Analysis</h4>
-                                <div class="flex items-center gap-4 mb-3">
-                                    <div class="flex-1">
-                                        <div class="flex justify-between text-xs text-slate-400 mb-1">
-                                            <span>Left Miss</span>
-                                            <span>{stats.missLeft.toFixed(0)}%</span>
-                                        </div>
-                                        <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                                            <div class="h-full bg-blue-500 rounded-full" style={{width: `${stats.missLeft.toFixed(0)}%`}}></div>
-                                        </div>
-                                    </div>
-                                    <div class="flex-1">
-                                        <div class="flex justify-between text-xs text-slate-400 mb-1">
-                                            <span>Right Miss</span>
-                                            <span>{stats.missRight.toFixed(0)}%</span>
-                                        </div>
-                                        <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                                            <div class="h-full bg-red-500 rounded-full" style={{width: `${stats.missRight.toFixed(0)}%`}}></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-4">
-                                    <div class="flex-1">
-                                        <div class="flex justify-between text-xs text-slate-400 mb-1">
-                                            <span>Short</span>
-                                            <span>{stats.missShort.toFixed(0)}%</span>
-                                        </div>
-                                        <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                                            <div class="h-full bg-yellow-500 rounded-full" style={{width: `${stats.missShort.toFixed(0)}%`}}></div>
-                                        </div>
-                                    </div>
-                                    <div class="flex-1">
-                                        <div class="flex justify-between text-xs text-slate-400 mb-1">
-                                            <span>Long</span>
-                                            <span>{stats.missLong.toFixed(0)}%</span>
-                                        </div>
-                                        <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                                            <div class="h-full bg-green-500 rounded-full" style={{width: `${stats.missLong.toFixed(0)}%`}}></div>
-                                        </div>
-                                    </div>
+                                <div class="space-y-3">
+                                  <div class="flex items-center gap-4"><div class="flex-1"><div class="flex justify-between text-xs text-slate-400 mb-1"><span>Left Miss</span><span>{stats.missLeft.toFixed(0)}%</span></div><div class="w-full h-2 bg-slate-700 rounded-full"><div class="h-full bg-blue-500 rounded-full" style={{width: `${stats.missLeft.toFixed(0)}%`}}></div></div></div><div class="flex-1"><div class="flex justify-between text-xs text-slate-400 mb-1"><span>Right Miss</span><span>{stats.missRight.toFixed(0)}%</span></div><div class="w-full h-2 bg-slate-700 rounded-full"><div class="h-full bg-red-500 rounded-full" style={{width: `${stats.missRight.toFixed(0)}%`}}></div></div></div></div>
+                                  <div class="flex items-center gap-4"><div class="flex-1"><div class="flex justify-between text-xs text-slate-400 mb-1"><span>Short Miss</span><span>{stats.missShort.toFixed(0)}%</span></div><div class="w-full h-2 bg-slate-700 rounded-full"><div class="h-full bg-yellow-500 rounded-full" style={{width: `${stats.missShort.toFixed(0)}%`}}></div></div></div><div class="flex-1"><div class="flex justify-between text-xs text-slate-400 mb-1"><span>Long Miss</span><span>{stats.missLong.toFixed(0)}%</span></div><div class="w-full h-2 bg-slate-700 rounded-full"><div class="h-full bg-green-500 rounded-full" style={{width: `${stats.missLong.toFixed(0)}%`}}></div></div></div></div>
                                 </div>
                             </div>
-                            
-                            <div class="md:w-1/2">
-                                <h3 class="text-xl font-bold text-amber-300 mb-4">
-                                    <i class="fas fa-trophy mr-2"></i>Top Performers
-                                </h3>
-                                
+                            <div>
+                                <h3 class="text-xl font-bold text-amber-300 mb-4"><i class="fas fa-trophy mr-2"></i>Top Performers</h3>
                                 <div class="space-y-4">
-                                    <div class="bg-slate-800/40 rounded-lg p-4">
-                                        <div class="flex justify-between items-center">
-                                            <div>
-                                                <div class="text-amber-400 font-bold">Longest Carry</div>
-                                                <div class="text-2xl font-bold text-white">{stats.maxCarry.toFixed(1)} yds</div>
-                                            </div>
-                                            <div class="text-xs bg-amber-900/40 text-amber-300 px-2 py-1 rounded">
-                                                Shot #{stats.bestCarry.index}
-                                            </div>
-                                        </div>
-                                        <div class="text-xs text-slate-500 mt-2">
-                                            Club Speed: <span class="text-amber-400">{stats.bestCarry.ClubSpeed} mph</span> • 
-                                            Smash: <span class="text-amber-400">{stats.bestCarry.SmashFactor.toFixed(2)}</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="bg-slate-800/40 rounded-lg p-4">
-                                        <div class="flex justify-between items-center">
-                                            <div>
-                                                <div class="text-green-400 font-bold">Most Accurate</div>
-                                                <div class="text-2xl font-bold text-white">±{stats.minSide.toFixed(1)} yds</div>
-                                            </div>
-                                            <div class="text-xs bg-green-900/40 text-green-300 px-2 py-1 rounded">
-                                                Shot #{stats.bestAccuracy.index}
-                                            </div>
-                                        </div>
-                                        <div class="text-xs text-slate-500 mt-2">
-                                            Carry: <span class="text-green-400">{stats.bestAccuracy.CarryDistance} yds</span> • 
-                                            Spin: <span class="text-green-400">{stats.bestAccuracy.SpinRate.toFixed(0)} rpm</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="bg-slate-800/40 rounded-lg p-4">
-                                        <div class="flex justify-between items-center">
-                                            <div>
-                                                <div class="text-red-400 font-bold">Best Strike</div>
-                                                <div class="text-2xl font-bold text-white">{stats.maxSmash.toFixed(2)}</div>
-                                            </div>
-                                            <div class="text-xs bg-red-900/40 text-red-300 px-2 py-1 rounded">
-                                                Shot #{stats.bestSmash.index}
-                                            </div>
-                                        </div>
-                                        <div class="text-xs text-slate-500 mt-2">
-                                            Ball Speed: <span class="text-red-400">{stats.bestSmash.BallSpeed} mph</span> • 
-                                            Launch: <span class="text-red-400">{stats.bestSmash.LaunchAngle.toFixed(1)}°</span>
-                                        </div>
-                                    </div>
+                                    <div class="bg-slate-800/40 rounded-lg p-4"><div class="flex justify-between items-center"><div><div class="text-amber-400 font-bold">Longest Carry</div><div class="text-2xl font-bold text-white">{stats.maxCarry.toFixed(1)} yds</div></div><div class="text-xs bg-amber-900/40 text-amber-300 px-2 py-1 rounded">Shot #{stats.bestCarry.index}</div></div></div>
+                                    <div class="bg-slate-800/40 rounded-lg p-4"><div class="flex justify-between items-center"><div><div class="text-green-400 font-bold">Most Accurate</div><div class="text-2xl font-bold text-white">±{stats.minSide.toFixed(1)} yds</div></div><div class="text-xs bg-green-900/40 text-green-300 px-2 py-1 rounded">Shot #{stats.bestAccuracy.index}</div></div></div>
+                                    <div class="bg-slate-800/40 rounded-lg p-4"><div class="flex justify-between items-center"><div><div class="text-red-400 font-bold">Best Strike (Smash)</div><div class="text-2xl font-bold text-white">{stats.maxSmash.toFixed(2)}</div></div><div class="text-xs bg-red-900/40 text-red-300 px-2 py-1 rounded">Shot #{stats.bestSmash.index}</div></div></div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="dashboard-card p-6 fade-in" style={{animationDelay: "0.2s"}}>
-                        <h3 class="text-xl font-bold text-green-400 mb-4">
-                            <i class="fas fa-wave-square mr-2"></i>Performance Trends
-                        </h3>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="bg-slate-800/40 rounded-xl p-4">
-                                <div class="text-center mb-4 text-slate-300">Carry Distance Consistency</div>
-                                <div class="flex items-end justify-center h-32">
-                                    {data.slice(0,10).map((shot, i) => ( // Use actual data
-                                        <div 
-                                            key={i}
-                                            class="flex-1 mx-1 flex flex-col items-center"
-                                            title={`Shot ${shot.index}: ${shot.CarryDistance.toFixed(0)} yds`}
-                                            style={{height: `${Math.max(10, (shot.CarryDistance / stats.carryDistance.max) * 100)}%`}}
-                                        >
-                                            <div class="w-full bg-gradient-to-t from-green-600 to-green-400 rounded-t flex-1"></div>
-                                            <div class="text-xs text-slate-500 mt-1">{shot.index}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                            
-                            <div class="bg-slate-800/40 rounded-xl p-4">
-                                <div class="text-center mb-4 text-slate-300">Smash Factor Progression</div>
-                                <div class="flex items-end justify-center h-32">
-                                    {data.slice(0,10).map((shot, i) => ( // Use actual data
-                                        <div 
-                                            key={i}
-                                            class="flex-1 mx-1 flex flex-col items-center"
-                                            title={`Shot ${shot.index}: ${shot.SmashFactor.toFixed(2)}`}
-                                            style={{height: `${Math.max(10, (shot.SmashFactor - 1.2) * 500)}%`}}
-                                        >
-                                            <div class="w-full bg-gradient-to-t from-amber-600 to-amber-400 rounded-t flex-1"></div>
-                                            <div class="text-xs text-slate-500 mt-1">{shot.SmashFactor.toFixed(2)}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                    <div class="dashboard-card p-6 fade-in" style={{animationDelay: "0.1s"}}>
+                         <h3 class="text-xl font-bold text-purple-300 mb-2"><i class="fas fa-check-double mr-2"></i>Shot Quality Probabilities</h3>
+                         <p class="text-sm text-slate-400 mb-6">Likelihood of achieving key consistency metrics.</p>
+                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
+                            <div class="bg-slate-800/40 rounded-xl p-4 text-center"><div class="text-4xl font-bold text-cyan-300 mb-2">{stats.distanceControlProb.toFixed(1)}%</div><div class="text-slate-300 text-sm">Distance Control</div><div class="text-slate-500 text-xs mt-1">(±10 yds of avg)</div></div>
+                            <div class="bg-slate-800/40 rounded-xl p-4 text-center"><div class="text-4xl font-bold text-green-300 mb-2">{stats.accuracyProb.toFixed(1)}%</div><div class="text-slate-300 text-sm">Accuracy</div><div class="text-slate-500 text-xs mt-1">(±15 yds side)</div></div>
+                            <div class="bg-slate-800/40 rounded-xl p-4 text-center"><div class="text-4xl font-bold text-red-400 mb-2">{stats.highEfficiencyProb.toFixed(1)}%</div><div class="text-slate-300 text-sm">High Efficiency</div><div class="text-slate-500 text-xs mt-1">(Smash ≥ 1.40)</div></div>
+                            <div class="bg-slate-800/40 rounded-xl p-4 text-center"><div class="text-4xl font-bold text-amber-300 mb-2">{stats.stockShotProbNew.toFixed(1)}%</div><div class="text-slate-300 text-sm">"Stock Shot"</div><div class="text-slate-500 text-xs mt-1">(Good Dist & Acc)</div></div>
+                         </div>
+                    </div>
+
+                    <div className="dashboard-card p-6 fade-in" style={{ animationDelay: "0.2s" }}>
+                        <h3 className="text-xl font-bold text-green-300 mb-2"><i className="fas fa-flag-checkered mr-2"></i>GIR Probabilities by Distance</h3>
+                        <p className="text-sm text-slate-400 mb-6">Your probability of hitting a standard green from specific yardages, based on your shot pattern within ±1.5 standard deviations.</p>
+                        <div className="space-y-4">
+                            {stats.girProbabilities.map((prob, i) => {
+                                const probValue = prob.probability;
+                                let barColorClass = 'bg-red-500';
+                                if (probValue > 65) barColorClass = 'bg-green-500';
+                                else if (probValue > 40) barColorClass = 'bg-amber-500';
+                                return (
+                                    <div key={i} className="flex items-center gap-4">
+                                        <div className="w-28 text-right pr-4 text-slate-300 font-medium">{prob.distance} yds</div>
+                                        <div className="flex-1"><div className="w-full h-4 bg-slate-700 rounded-full overflow-hidden"><div className={`h-full ${barColorClass} rounded-full transition-all duration-500`} style={{width: `${probValue}%`}}></div></div></div>
+                                        <div className="w-16 text-left pl-3 font-bold text-white">{probValue.toFixed(0)}%</div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
 
-                    {/* Descriptive Statistics Table */}
                     <div class="dashboard-card p-6 fade-in" style={{animationDelay: "0.3s"}}>
-                        <h3 class="text-xl font-bold text-lime-300 mb-4">
-                            <i class="fas fa-table mr-2"></i>Descriptive Statistics
-                        </h3>
+                        <h3 class="text-xl font-bold text-lime-300 mb-4"><i class="fas fa-table mr-2"></i>Descriptive Statistics</h3>
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-slate-700">
-                                <thead class="bg-slate-800/50">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Metric</th>
-                                        <th class="px-4 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">Average</th>
-                                        <th class="px-4 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">Std Dev</th>
-                                        <th class="px-4 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">Min</th>
-                                        <th class="px-4 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">Max</th>
-                                    </tr>
-                                </thead>
+                                <thead class="bg-slate-800/50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Metric</th><th class="px-4 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">Average</th><th class="px-4 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">Std Dev</th><th class="px-4 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">Min</th><th class="px-4 py-3 text-right text-xs font-medium text-slate-300 uppercase tracking-wider">Max</th></tr></thead>
                                 <tbody class="divide-y divide-slate-700/50">
                                     {metricsForTable.map(metric => {
                                         const statData = stats[metric.path];
-                                        if (!statData || typeof statData !== 'object') {
-                                            return (
-                                                <tr key={metric.label} class="hover:bg-slate-800/30 transition-colors">
-                                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-200">{metric.label}</td>
-                                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-300 text-right" colSpan="4">Data N/A</td>
-                                                </tr>
-                                            );
-                                        }
-                                        return (
-                                            <tr key={metric.label} class="hover:bg-slate-800/30 transition-colors">
-                                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-200">{metric.label}</td>
-                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-300 text-right">{!isNaN(statData.avg) ? statData.avg.toFixed(metric.precision) : 'N/A'}</td>
-                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-300 text-right">{!isNaN(statData.stdDev) ? statData.stdDev.toFixed(metric.precision) : 'N/A'}</td>
-                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-300 text-right">{!isNaN(statData.min) ? statData.min.toFixed(metric.precision) : 'N/A'}</td>
-                                                <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-300 text-right">{!isNaN(statData.max) ? statData.max.toFixed(metric.precision) : 'N/A'}</td>
-                                            </tr>
-                                        );
+                                        if (!statData || typeof statData !== 'object') return null;
+                                        return (<tr key={metric.label} class="hover:bg-slate-800/30 transition-colors"><td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-200">{metric.label}</td><td class="px-4 py-3 whitespace-nowrap text-sm text-slate-300 text-right">{!isNaN(statData.avg) ? statData.avg.toFixed(metric.precision) : 'N/A'}</td><td class="px-4 py-3 whitespace-nowrap text-sm text-slate-300 text-right">{!isNaN(statData.stdDev) ? statData.stdDev.toFixed(metric.precision) : 'N/A'}</td><td class="px-4 py-3 whitespace-nowrap text-sm text-slate-300 text-right">{!isNaN(statData.min) ? statData.min.toFixed(metric.precision) : 'N/A'}</td><td class="px-4 py-3 whitespace-nowrap text-sm text-slate-300 text-right">{!isNaN(statData.max) ? statData.max.toFixed(metric.precision) : 'N/A'}</td></tr>);
                                     })}
                                 </tbody>
                             </table>
@@ -779,191 +561,53 @@ React.useEffect(() => {
             );
         }
         
-              // Component for Dispersion Tab with filter
         function DispersionTab({ stats, data, setSelectedShot }) {
-            const [filter, setFilter] = React.useState('all'); // 'all', 'good', 'average', 'poor'
-            const bestRange = stats.girProbabilities.reduce((best, current) => 
-                    current.probability > best.probability ? current : best, 
-                    {probability: 0}
-                );
-            // Filter shots based on smash factor
+            const [filter, setFilter] = React.useState('all');
             const filteredShots = data.filter(shot => {
                 if (filter === 'all') return true;
-                if (filter === 'good') return shot.SmashFactor >= 1.38;
-                if (filter === 'average') return shot.SmashFactor >= 1.32 && shot.SmashFactor < 1.38;
-                if (filter === 'poor') return shot.SmashFactor < 1.32;
-                return true;
+                const quality = getSmashFactorQuality(shot.SmashFactor).label.toLowerCase();
+                return filter === quality;
             });
             
             return (
                 <div class="space-y-8">
                     <div class="dashboard-card p-6 fade-in">
-                        <h3 class="text-xl font-bold text-amber-300 mb-4">
-                            <i class="fas fa-bullseye mr-2"></i>Shot Dispersion
-                        </h3>
-                        
+                        <h3 class="text-xl font-bold text-amber-300 mb-4"><i class="fas fa-bullseye mr-2"></i>Shot Dispersion</h3>
                         <div class="flex flex-col md:flex-row gap-6">
                             <div class="md:w-2/3">
-                                {/* Filter buttons */}
-                                <div class="flex gap-3 mb-4">
-                                    <div class="text-slate-400 text-sm font-medium mr-2">Filter:</div>
-                                    <button 
-                                        class={`filter-btn all ${filter === 'all' ? 'active' : ''}`}
-                                        onClick={() => setFilter('all')}
-                                    >
-                                        All Shots
-                                    </button>
-                                    <button 
-                                        class={`filter-btn good ${filter === 'good' ? 'active' : ''}`}
-                                        onClick={() => setFilter('good')}
-                                    >
-                                        <i class="fas fa-circle text-green-500 mr-1"></i> Good Strikes
-                                    </button>
-                                    <button 
-                                        class={`filter-btn average ${filter === 'average' ? 'active' : ''}`}
-                                        onClick={() => setFilter('average')}
-                                    >
-                                        <i class="fas fa-circle text-yellow-500 mr-1"></i> Average
-                                    </button>
-                                    <button 
-                                        class={`filter-btn poor ${filter === 'poor' ? 'active' : ''}`}
-                                        onClick={() => setFilter('poor')}
-                                    >
-                                        <i class="fas fa-circle text-red-500 mr-1"></i> Poor Strikes
-                                    </button>
+                                <div class="flex gap-2 mb-4 items-center flex-wrap">
+                                    <div class="text-slate-400 text-sm font-medium mr-2">Filter by Strike:</div>
+                                    <button class={`px-3 py-1 text-xs rounded-full ${filter === 'all' ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-300'}`} onClick={() => setFilter('all')}>All</button>
+                                    <button class={`px-3 py-1 text-xs rounded-full ${filter === 'great' ? 'bg-green-500 text-white' : 'bg-slate-700 text-slate-300'}`} onClick={() => setFilter('great')}>Great</button>
+                                    <button class={`px-3 py-1 text-xs rounded-full ${filter === 'good' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-300'}`} onClick={() => setFilter('good')}>Good</button>
+                                    <button class={`px-3 py-1 text-xs rounded-full ${filter === 'average' ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300'}`} onClick={() => setFilter('average')}>Average</button>
+                                    <button class={`px-3 py-1 text-xs rounded-full ${filter === 'bad' ? 'bg-orange-500 text-white' : 'bg-slate-700 text-slate-300'}`} onClick={() => setFilter('bad')}>Bad</button>
+                                    <button class={`px-3 py-1 text-xs rounded-full ${filter === 'horrible' ? 'bg-red-600 text-white' : 'bg-slate-700 text-slate-300'}`} onClick={() => setFilter('horrible')}>Horrible</button>
                                 </div>
-                                
                                 <div class="grid-target rounded-xl overflow-hidden h-96 relative border border-slate-700">
-                                    {/* Target lines */}
-                                    <div class="absolute inset-0 flex items-center justify-center">
-                                        <div class="w-full h-px bg-slate-600/50"></div>
-                                        <div class="h-full w-px bg-slate-600/50"></div>
-                                    </div>
-                                    
-                                    {/* Distance circles */}
-                                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-600/50" style={{width: '160px', height: '160px'}}></div>
-                                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-600/50" style={{width: '240px', height: '240px'}}></div>
-                                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-600/50" style={{width: '320px', height: '320px'}}></div>
-                                    
-                                    {/* Shots */}
+                                    <div class="absolute inset-0 flex items-center justify-center"><div class="w-full h-px bg-slate-600/50"></div><div class="h-full w-px bg-slate-600/50"></div></div>
+                                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-600/50" style={{width: '160px', height: '160px'}}></div>
+                                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-600/50" style={{width: '240px', height: '240px'}}></div>
+                                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-600/50" style={{width: '320px', height: '320px'}}></div>
                                     {filteredShots.map(shot => (
-                                        <div 
-                                            key={shot.index}
-                                            class="absolute shot-dot w-3 h-3 rounded-full bg-green-500 cursor-pointer"
-                                            style={{
-                                                left: `calc(50% + ${shot.SideCarry * 4}px)`,
-                                                top: `calc(50% - ${(shot.CarryDistance - stats.carryDistance.avg) * 0.8}px)`,
-                                                backgroundColor: getSmashColor(shot.SmashFactor),
-                                                transform: `scale(${0.7 + shot.SmashFactor / 4})`
-                                            }}
-                                            onClick={() => setSelectedShot(shot)}
-                                        ></div>
+                                        <div key={shot.index} class="absolute shot-dot w-3 h-3 rounded-full cursor-pointer" style={{left: `calc(50% + ${shot.SideCarry * 3}px)`, bottom: `calc(50% + ${(shot.CarryDistance - stats.carryDistance.avg) * 3}px - 6px)`, backgroundColor: getSmashFactorQuality(shot.SmashFactor).color, transform: `scale(${0.8 + (shot.SmashFactor - 1.25) / 0.2})`}} onClick={() => setSelectedShot(shot)}></div>
                                     ))}
-                                    
-                                    {/* Center flag */}
-                                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                                        <div class="w-1 h-8 bg-red-400 absolute -top-8"></div>
-                                    </div>
+                                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"><i class="fas fa-flag text-red-500 text-lg"></i></div>
                                 </div>
-                                
-                                <div class="flex justify-center gap-6 mt-4 text-sm text-slate-400">
-                                    <div class="flex items-center">
-                                        <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                                        <span>Good Strike (1.35+)</span>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <div class="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
-                                        <span>Average (1.25-1.35)</span>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-                                        <span>Poor Strike (Below 1.25)</span>
-                                    </div>
+                                <div class="flex justify-center gap-4 mt-4 text-xs text-slate-400 flex-wrap">
+                                    <div class="flex items-center"><div class="w-2.5 h-2.5 rounded-full mr-2" style={{backgroundColor: getSmashFactorQuality(1.39).color}}></div>Great (1.39+)</div>
+                                    <div class="flex items-center"><div class="w-2.5 h-2.5 rounded-full mr-2" style={{backgroundColor: getSmashFactorQuality(1.35).color}}></div>Good (1.35-1.38)</div>
+                                    <div class="flex items-center"><div class="w-2.5 h-2.5 rounded-full mr-2" style={{backgroundColor: getSmashFactorQuality(1.31).color}}></div>Avg (1.31-1.34)</div>
+                                    <div class="flex items-center"><div class="w-2.5 h-2.5 rounded-full mr-2" style={{backgroundColor: getSmashFactorQuality(1.30).color}}></div>Bad ({'<'}1.31)</div>
                                 </div>
                             </div>
-                            
                             <div class="md:w-1/3">
                                 <h4 class="text-lg font-bold text-cyan-300 mb-4">Dispersion Analysis</h4>
-                                
                                 <div class="space-y-4">
-                                    <div>
-                                        <div class="flex justify-between mb-1 text-slate-400">
-                                            <span>Front-to-Back Spread</span>
-                                            <span>{(stats.carryDistance.max - stats.carryDistance.min).toFixed(1)} yds</span>
-                                        </div>
-                                        <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                                            <div class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full" style={{width: '64%'}}></div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div>
-                                        <div class="flex justify-between mb-1 text-slate-400">
-                                            <span>Left-to-Right Spread</span>
-                                            <span>{Math.abs(stats.sideCarry.max - stats.sideCarry.min).toFixed(1)} yds</span>
-                                        </div>
-                                        <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-                                            <div class="h-full bg-gradient-to-r from-amber-500 to-yellow-500 rounded-full" style={{width: '78%'}}></div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="bg-slate-800/40 rounded-lg p-4 mt-6">
-                                        <div class="text-lg font-bold text-center text-green-400 mb-2">
-                                            Dispersion Score: {stats.dispersionScore.toFixed(0)}/100
-                                        </div>
-                                        <div class="text-xs text-slate-400 text-center">
-                                            Measures how tightly grouped your shots are
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="text-sm text-slate-300 mt-6">
-                                        <i class="fas fa-info-circle text-blue-400 mr-2"></i>
-                                        Your shots are {stats.dispersionScore > 70 ? 'well grouped' : stats.dispersionScore > 50 ? 'moderately grouped' : 'spread out'}, 
-                                        with {stats.missLeft > stats.missRight ? 'a tendency to miss left' : 'a tendency to miss right'}.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="dashboard-card p-6 fade-in" style={{animationDelay: "0.2s"}}>
-                        <h3 class="text-xl font-bold text-purple-400 mb-4">
-                            <i class="fas fa-flag mr-2"></i>Green in Regulation Probability
-                        </h3>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="space-y-4">
-                                {stats.girProbabilities.map((prob, i) => (
-                                    <div key={i} class="flex items-center">
-                                        <div class="w-24 text-right pr-4 text-slate-400">{prob.distance} yds:</div>
-                                        <div class="flex-1 flex items-center">
-                                            <div class="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
-                                                <div 
-                                                    class={`h-full ${prob.probability > 65 ? 'bg-green-500' : prob.probability > 45 ? 'bg-amber-500' : 'bg-red-500'} rounded-full`} 
-                                                    style={{width: `${prob.probability.toFixed(0)}%`}}
-                                                ></div>
-                                            </div>
-                                            <div class={`w-16 text-right pl-3 font-bold ${prob.probability > 65 ? 'text-green-400' : prob.probability > 45 ? 'text-amber-400' : 'text-red-400'}`}>
-                                                {prob.probability.toFixed(0)}%
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            
-                            <div class="bg-slate-800/40 rounded-xl p-5 flex flex-col items-center justify-center">
-                                <div class="text-5xl font-bold text-center mb-2" style={{
-                                    background: 'linear-gradient(to right, #22c55e, #3b82f6)',
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent'
-                                }}>
-                                    {bestRange.probability.toFixed(0)}%
-                                </div>
-                                <div class="text-slate-400 text-center mb-4">
-                                    Overall GIR Probability at {bestRange.distance} yards
-                                </div>
-                                <div class="text-sm text-slate-300 text-center">
-                                    Tour average: 75% • Scratch golfer: 65%<br/>
-                                    Your potential: {Math.min(95, bestRange.probability + 15).toFixed(0)}% with improved consistency
+                                    <div><div class="flex justify-between mb-1 text-slate-400"><span>Front-to-Back Spread</span><span>{(stats.carryDistance.max - stats.carryDistance.min).toFixed(1)} yds</span></div><div class="w-full h-2 bg-slate-700 rounded-full"><div class="h-full bg-gradient-to-r from-cyan-500 to-blue-500" style={{width: `${Math.max(100 - (stats.carryDistance.max - stats.carryDistance.min), 0)}%`}}></div></div></div>
+                                    <div><div class="flex justify-between mb-1 text-slate-400"><span>Left-to-Right Spread</span><span>{Math.abs(stats.sideCarry.max - stats.sideCarry.min).toFixed(1)} yds</span></div><div class="w-full h-2 bg-slate-700 rounded-full"><div class="h-full bg-gradient-to-r from-amber-500 to-yellow-500" style={{width: `${Math.max(100 - Math.abs(stats.sideCarry.max - stats.sideCarry.min), 0)}%`}}></div></div></div>
+                                    <div class="bg-slate-800/40 rounded-lg p-4 mt-6"><div class="text-lg font-bold text-center text-green-400 mb-2">Dispersion Score: {stats.dispersionScore.toFixed(0)}/100</div><div class="text-xs text-slate-400 text-center">Measures how tightly grouped your shots are.</div></div>
+                                    <div class="text-sm text-slate-300 mt-6"><i class="fas fa-info-circle text-blue-400 mr-2"></i>Your shots are {stats.dispersionScore > 70 ? 'well grouped' : stats.dispersionScore > 50 ? 'moderately grouped' : 'spread out'}, with {stats.missLeft > stats.missRight ? 'a tendency to miss left' : 'a tendency to miss right'}.</div>
                                 </div>
                             </div>
                         </div>
@@ -971,459 +615,124 @@ React.useEffect(() => {
                 </div>
             );
         }
-        // Component for Swing Analysis Tab
-function SwingTab({ stats }) {
-    // If stats is not available, show loading
-    if (!stats) {
-        return (
-            <div class="flex flex-col items-center justify-center h-64">
-                <div class="loading-spinner mb-4"></div>
-                <div class="text-slate-400">Loading swing data...</div>
-            </div>
-        );
-    }
 
-    // Safely access values with defaults
-    const clubPathAvg = stats.clubPath?.avg ?? 0;
-    const attackAngleAvg = stats.attackAngle?.avg ?? 0;
-    const launchAngleAvg = stats.launchAngle?.avg ?? 0;
-    const apexAvg = stats.apex?.avg ?? 0;
-    const descentAngleAvg = stats.descentAngle?.avg ?? 0;
-    const spinRateAvg = stats.spinRate?.avg ?? 0;
-    const swingEfficiency = stats.swingEfficiency ?? 0;
-    React.useEffect(() => {
-    if (typeof stats === 'undefined' || !document.getElementById('swing-path')) return;
-    
-    const swingPath = document.getElementById('swing-path');
-    const clubHead = document.getElementById('club-head');
-    const golfBall = document.getElementById('golf-ball');
-    const impactFlash = document.getElementById('impact-flash');
-    const replayButton = document.getElementById('replay-button');
-    
-    let animationFrameId;
-    let clubHeadIntervalId;
+        function SwingTab({ stats }) {
+            if (!stats) return null;
 
-    // Set initial position
-    swingPath.style.strokeDasharray = '1000';
-    swingPath.style.strokeDashoffset = '1000';
-    
-    // Animate function
-    const animateSwing = () => {
-        if (clubHeadIntervalId) clearInterval(clubHeadIntervalId);
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            const clubPathAvg = stats.clubPath?.avg ?? 0;
+            const attackAngleAvg = stats.attackAngle?.avg ?? 0;
+            const clubPathQuality = getClubPathQuality(clubPathAvg);
+            const attackAngleQuality = getAttackAngleQuality(attackAngleAvg);
 
-        // Reset elements
-        swingPath.style.strokeDashoffset = '1000';
-        clubHead.setAttribute('cx', '50');
-        clubHead.setAttribute('cy', '150');
-        golfBall.setAttribute('cx', '150'); // Reset ball position
-        golfBall.setAttribute('cy', '150');
-        golfBall.style.opacity = '1';
-        impactFlash.setAttribute('r', '0');
-        impactFlash.style.opacity = '0';
-        
-        let currentX = 50;
-        const targetX = 250;
-        const duration = 1000; // ms
-        let startTime = null;
+            React.useEffect(() => {
+                const swingPath = document.getElementById('swing-path');
+                const replayButton = document.getElementById('replay-button');
+                if(!swingPath || !replayButton) return;
 
-        function animationStep(timestamp) {
-            if (!startTime) startTime = timestamp;
-            const elapsedTime = timestamp - startTime;
-            const progress = Math.min(elapsedTime / duration, 1);
+                const animateSwing = () => {
+                    swingPath.style.transition = 'none';
+                    swingPath.style.strokeDashoffset = '1000';
+                    setTimeout(() => {
+                        swingPath.style.transition = 'stroke-dashoffset 1.5s ease-in-out';
+                        swingPath.style.strokeDashoffset = '0';
+                    }, 50);
+                };
+                replayButton.addEventListener('click', animateSwing);
+                animateSwing(); 
+                return () => replayButton.removeEventListener('click', animateSwing);
+            }, [stats, clubPathAvg]);
 
-            currentX = 50 + progress * (targetX - 50);
-            const pathPoint = getPointOnPath(progress);
-            clubHead.setAttribute('cx', currentX);
-            clubHead.setAttribute('cy', pathPoint.y);
-
-            const dashOffset = 1000 - (progress * 1000);
-            swingPath.style.strokeDashoffset = dashOffset;
-
-            // Impact
-            if (progress >= 0.49 && progress <= 0.51 && parseFloat(impactFlash.style.opacity) < 0.1) { // Approx middle of swing path
-                impactFlash.setAttribute('r', '20');
-                impactFlash.style.opacity = '0.8';
-                
-                // Ball animation part (simple upward and forward movement)
-                let ballStartTime = performance.now();
-                function animateBall(time) {
-                    const ballElapsedTime = time - ballStartTime;
-                    const ballProgress = Math.min(ballElapsedTime / 500, 1); // 0.5 sec ball flight
-                    
-                    golfBall.setAttribute('cx', 150 + ballProgress * 70); // Move right
-                    golfBall.setAttribute('cy', 150 - Math.sin(ballProgress * Math.PI) * 50); // Arc
-                    golfBall.style.opacity = 1 - ballProgress;
-
-                    if (ballProgress < 1) {
-                        requestAnimationFrame(animateBall);
-                    }
-                }
-                requestAnimationFrame(animateBall);
-            }
-            
-            // Fade out impact flash
-            if (parseFloat(impactFlash.style.opacity) > 0) {
-                 impactFlash.style.opacity = Math.max(0, parseFloat(impactFlash.style.opacity) - 0.03);
-                 impactFlash.setAttribute('r', Math.max(0, parseFloat(impactFlash.getAttribute('r')) * 0.95));
-            }
-
-            if (progress < 1) {
-                animationFrameId = requestAnimationFrame(animationStep);
-            } else {
-                 // Optional: Auto-replay or reset
-                // setTimeout(animateSwing, 1000); 
-            }
+            return (
+                <div class="space-y-8">
+                    <div class="dashboard-card p-6 fade-in">
+                        <h3 class="text-xl font-bold text-red-400 mb-4"><i class="fas fa-golf-ball mr-2"></i>Swing Dynamics</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div class="bg-slate-800/40 rounded-xl p-5 flex flex-col items-center">
+                                <div class="text-3xl font-bold mb-3 text-amber-400">{clubPathAvg.toFixed(1)}°</div>
+                                <div class="text-lg text-slate-300 mb-2">Club Path</div>
+                                <QualityBadge quality={clubPathQuality.label} />
+                                <div class="w-full max-w-xs mt-4">
+                                    <div class="flex justify-between text-xs text-slate-500 mb-1"><span>-5° (In-to-Out)</span><span>+5° (Out-to-In)</span></div>
+                                    <div class="relative h-2 bg-slate-700 rounded-full"><div class="absolute h-2 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 w-full"></div><div class="absolute h-4 w-0.5 bg-white top-1/2 -mt-2" style={{left: `calc(50% + ${clubPathAvg * 10}%)`}}></div></div>
+                                </div>
+                                <div class="mt-4 text-sm text-slate-400 text-center">{clubPathQuality.description}</div>
+                            </div>
+                            <div class="bg-slate-800/40 rounded-xl p-5 flex flex-col items-center">
+                                <div class="text-3xl font-bold mb-3 text-cyan-400">{attackAngleAvg.toFixed(1)}°</div>
+                                <div class="text-lg text-slate-300 mb-2">Attack Angle</div>
+                                <QualityBadge quality={attackAngleQuality.label} />
+                                <div class="w-full max-w-xs mt-4">
+                                    <div class="flex justify-between text-xs text-slate-500 mb-1"><span>-7° (Steep)</span><span>+2° (Shallow)</span></div>
+                                    <div class="relative h-2 bg-slate-700 rounded-full"><div class="absolute h-2 bg-gradient-to-r from-red-500 via-cyan-500 to-green-500 w-full"></div><div class="absolute h-4 w-0.5 bg-white top-1/2 -mt-2" style={{left: `calc(50% + ${(attackAngleAvg + 2.5) * 10}%)`}}></div></div>
+                                </div>
+                                <div class="mt-4 text-sm text-slate-400 text-center">{attackAngleQuality.description}</div>
+                            </div>
+                        </div>
+                    </div>
+                     <div class="dashboard-card p-6 fade-in" style={{animationDelay: "0.2s"}}>
+                        <h3 class="text-xl font-bold text-amber-300 mb-4"><i class="fas fa-project-diagram mr-2"></i>Swing Plane Visualization</h3>
+                        <div class="swing-plane">
+                            <div class="swing-plane-inner">
+                                <svg width="100%" height="100%" viewBox="0 0 300 180">
+                                    <path d="M50,150 L150,30 L250,150" fill="none" stroke="#4b5563" stroke-width="1" stroke-dasharray="4" />
+                                    <path id="swing-path" d={`M50,150 Q150,${30 + clubPathAvg * 5} 250,150`} fill="none" stroke="url(#swing-gradient)" stroke-width="3" stroke-linecap="round"/>
+                                    <defs><linearGradient id="swing-gradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3b82f6" /><stop offset="100%" stop-color="#22c55e" /></linearGradient></defs>
+                                    <circle cx="150" cy="150" r="8" fill="#ffffff" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="text-center text-slate-400 mt-4">Your swing combines a <span class="font-bold text-amber-300">{clubPathQuality.label.toLowerCase()}</span> path with an <span class="font-bold text-cyan-300">{attackAngleQuality.label.toLowerCase()}</span> attack angle.</div>
+                        <div class="flex justify-center mt-4"><button id="replay-button" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors"><i class="fas fa-sync mr-2"></i>Replay Animation</button></div>
+                     </div>
+                </div>
+            );
         }
-        animationFrameId = requestAnimationFrame(animationStep);
-    };
-    
-    // Helper to get point on path (simplified Bezier or custom)
-    const getPointOnPath = (t) => {
-        // Using a quadratic Bezier curve for the swing path
-        // P0=(50,150), P1=(150, 30 + clubPathAvg*5), P2=(250,150)
-        // Modify control point P1 based on clubPathAvg to visualize in/out-to-in/neutral paths
-        // clubPathAvg positive: out-to-in (higher P1.y), negative: in-to-out (lower P1.y)
-        const p0y = 150;
-        const p1y = 30 + (clubPathAvg * 5); // Control point Y based on club path
-        const p2y = 150;
 
-        const y = Math.pow(1 - t, 2) * p0y + 2 * (1 - t) * t * p1y + Math.pow(t, 2) * p2y;
-        return { y }; // x is handled by progress
-    };
-    
-    // Start animation
-    animateSwing();
-    
-    // Add replay button functionality
-    const replayHandler = () => animateSwing();
-    replayButton.addEventListener('click', replayHandler);
-    
-    // Cleanup
-    return () => {
-        if (clubHeadIntervalId) clearInterval(clubHeadIntervalId);
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        replayButton.removeEventListener('click', replayHandler);
-    };
-}, [stats, clubPathAvg]); // Add clubPathAvg dependency
-    return (
-        <div class="space-y-8">
-            <div class="dashboard-card p-6 fade-in">
-                <h3 class="text-xl font-bold text-red-400 mb-4">
-                    <i class="fas fa-golf-ball mr-2"></i>Swing Dynamics
-                </h3>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div class="bg-slate-800/40 rounded-xl p-5 flex flex-col items-center">
-                        <div class="text-3xl font-bold mb-3 text-amber-400">
-                            {clubPathAvg.toFixed(1)}°
-                        </div>
-                        <div class="text-lg text-slate-300 mb-4">Club Path</div>
-                        <div class="w-full max-w-xs">
-                            <div class="flex justify-between text-xs text-slate-500 mb-1">
-                                <span>-5° (In-to-Out)</span>
-                                <span>+5° (Out-to-In)</span>
-                            </div>
-                            <div class="relative h-2 bg-slate-700 rounded-full">
-                                <div class="absolute h-2 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full" style={{width: '100%'}}></div>
-                                <div class="absolute h-4 w-0.5 bg-white top-1/2 -mt-2" style={{left: `calc(50% + ${clubPathAvg * 10}%)`}}></div>
-                            </div>
-                        </div>
-                        <div class="mt-4 text-sm text-slate-400 text-center">
-                            {clubPathAvg < -1.5 ? 'Strong in-to-out path' : 
-                             clubPathAvg > 1.5 ? 'Out-to-in path' : 'Neutral path'}
-                        </div>
-                    </div>
-                    
-                    <div class="bg-slate-800/40 rounded-xl p-5 flex flex-col items-center">
-                        <div class="text-3xl font-bold mb-3 text-cyan-400">
-                            {attackAngleAvg.toFixed(1)}°
-                        </div>
-                        <div class="text-lg text-slate-300 mb-4">Attack Angle</div>
-                        <div class="w-full max-w-xs">
-                            <div class="flex justify-between text-xs text-slate-500 mb-1">
-                                <span>-5° (Steep)</span>
-                                <span>+5° (Shallow)</span>
-                            </div>
-                            <div class="relative h-2 bg-slate-700 rounded-full">
-                                <div class="absolute h-2 bg-gradient-to-r from-purple-500 via-cyan-500 to-green-500 rounded-full" style={{width: '100%'}}></div>
-                                <div class="absolute h-4 w-0.5 bg-white top-1/2 -mt-2" style={{left: `calc(50% + ${attackAngleAvg * 10}%)`}}></div>
-                            </div>
-                        </div>
-                        <div class="mt-4 text-sm text-slate-400 text-center">
-                            {attackAngleAvg < -3 ? 'Downward strike' : 
-                             attackAngleAvg > 1 ? 'Sweeping contact' : 'Ideal iron strike'}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-slate-800/40 rounded-xl p-5">
-                        <h4 class="text-lg font-bold text-amber-300 mb-4">Spin and Launch Profile</h4>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <div class="text-slate-400 mb-1">Spin Rate</div>
-                                <div class="text-2xl font-bold text-white">{spinRateAvg.toFixed(0)}<span class="text-slate-500 text-lg"> rpm</span></div>
-                                <div class="text-xs text-slate-500 mt-1">
-                                    {spinRateAvg > 8000 ? 'High (consider lower loft)' : 
-                                     spinRateAvg < 6000 ? 'Low (check loft/contact)' : 'Ideal range'}
-                                </div>
-                            </div>
-                            <div>
-                                <div class="text-slate-400 mb-1">Launch Angle</div>
-                                <div class="text-2xl font-bold text-white">{launchAngleAvg.toFixed(1)}<span class="text-slate-500 text-lg">°</span></div>
-                                <div class="text-xs text-slate-500 mt-1">
-                                    {launchAngleAvg > 20 ? 'High launch' : 
-                                     launchAngleAvg < 16 ? 'Low launch' : 'Optimal trajectory'}
-                                </div>
-                            </div>
-                            <div>
-                                <div class="text-slate-400 mb-1">Peak Height</div>
-                                <div class="text-2xl font-bold text-white">{apexAvg.toFixed(1)}<span class="text-slate-500 text-lg"> ft</span></div>
-                                <div class="text-xs text-slate-500 mt-1">
-                                    {apexAvg > 32 ? 'Very high' : 
-                                     apexAvg < 24 ? 'Low trajectory' : 'Standard'}
-                                </div>
-                            </div>
-                            <div>
-                                <div class="text-slate-400 mb-1">Descent Angle</div>
-                                <div class="text-2xl font-bold text-white">{descentAngleAvg.toFixed(1)}<span class="text-slate-500 text-lg">°</span></div>
-                                <div class="text-xs text-slate-500 mt-1">
-                                    {descentAngleAvg > 50 ? 'Steep (good for holding greens)' : 
-                                     descentAngleAvg < 42 ? 'Shallow (may roll out)' : 'Optimal'}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-slate-800/40 rounded-xl p-5">
-                        <h4 class="text-lg font-bold text-green-400 mb-4">Swing Efficiency</h4>
-                        <div class="flex items-center justify-center h-full">
-                            <div class="text-center">
-                                <div class="inline-flex items-center justify-center relative">
-                                    <svg width="160" height="160" viewBox="0 0 160 160">
-                                        <circle cx="80" cy="80" r="70" fill="none" stroke="#1e293b" stroke-width="12"></circle>
-                                        <circle 
-                                            cx="80" cy="80" r="70" fill="none" 
-                                            stroke="url(#efficiency-gradient)" 
-                                            stroke-width="12" 
-                                            stroke-linecap="round"
-                                            class="progress-ring-circle"
-                                            stroke-dasharray="440"
-                                            stroke-dashoffset={440 - (440 * swingEfficiency / 100)}
-                                        ></circle>
-                                        <defs>
-                                            <linearGradient id="efficiency-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                                <stop offset="0%" stop-color="#22c55e" />
-                                                <stop offset="100%" stop-color="#3b82f6" />
-                                            </linearGradient>
-                                        </defs>
-                                    </svg>
-                                    <div class="absolute text-3xl font-bold" style={{
-                                        background: 'linear-gradient(to right, #22c55e, #3b82f6)',
-                                        WebkitBackgroundClip: 'text',
-                                        WebkitTextFillColor: 'transparent'
-                                    }}>
-                                        {swingEfficiency.toFixed(0)}%
-                                    </div>
-                                </div>
-                                <div class="mt-4 text-slate-300">
-                                    Energy transfer efficiency
-                                </div>
-                                <div class="text-xs text-slate-500 mt-2">
-                                    Combines smash factor, club path, and attack angle
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="dashboard-card p-6 fade-in" style={{animationDelay: "0.2s"}}>
-                <h3 class="text-xl font-bold text-amber-300 mb-4">
-                    <i class="fas fa-project-diagram mr-2"></i>Swing Plane Visualization
-                </h3>
-                
-                <div class="swing-plane">
-                    <div class="swing-plane-inner">
-                        <svg width="100%" height="100%" viewBox="0 0 300 180">
-                            {/* Reference Plane */}
-                            <path 
-                                d="M50,150 L150,30 L250,150" 
-                                fill="none" 
-                                stroke="#4b5563" 
-                                stroke-width="1" 
-                                stroke-dasharray="4"
-                            />
-                            
-                            {/* Dynamic Swing Path */}
-                            <path 
-                                id="swing-path"
-                                // d={`M50,150 C100,${150 - 120 + clubPathAvg * 10} 200,${30 - clubPathAvg * 10} 250,150`}
-                                d={`M50,150 Q150,${30 + clubPathAvg * 5} 250,150`} // Quadratic Bezier for simpler path
-                                fill="none" 
-                                stroke="url(#swing-gradient)" 
-                                stroke-width="3" 
-                                stroke-linecap="round"
-                            />
-                            <defs>
-                                <linearGradient id="swing-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stop-color="#3b82f6" />
-                                    <stop offset="100%" stop-color="#22c55e" />
-                                </linearGradient>
-                                
-                                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                                    <feGaussianBlur stdDeviation="4" result="blur" />
-                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                </filter>
-                            </defs>
-                            
-                            {/* Club Head */}
-                            <circle 
-                                id="club-head"
-                                cx="50" 
-                                cy="150" 
-                                r="6" 
-                                fill="#3b82f6"
-                                filter="url(#glow)"
-                            />
-                            
-                            {/* Ball */}
-                            <circle 
-                                id="golf-ball"
-                                cx="150" 
-                                cy="150" 
-                                r="8" 
-                                fill="#ffffff" 
-                                filter="url(#glow)"
-                            />
-                            
-                            {/* Impact Flash */}
-                            <circle 
-                                id="impact-flash"
-                                cx="150" 
-                                cy="150" 
-                                r="0" 
-                                fill="#fbbf24" 
-                                opacity="0"
-                            />
-                            
-                            {/* Angle markers */}
-                            <text x="40" y="140" fill="#94a3b8" font-size="12">-5°</text>
-                            <text x="250" y="140" fill="#94a3b8" font-size="12">+5°</text>
-                        </svg>
-                    </div>
-                </div>
-                
-                <div class="text-center text-slate-400 mt-4">
-                    Your swing plane is {clubPathAvg > 2 ? 'upright' : clubPathAvg < -2 ? 'flat' : 'neutral'}
-                    {attackAngleAvg < -3 ? ' with a downward strike' : 
-                     attackAngleAvg > 1 ? ' with a sweeping contact' : ''}
-                </div>
-                
-                <div class="flex justify-center mt-4">
-                    <button 
-                        id="replay-button"
-                        class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium transition-colors"
-                    >
-                        <i class="fas fa-sync mr-2"></i>Replay Animation
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-
-}     // Component for Recommendations Tab
         function RecommendationsTab({ stats }) {
             return (
                 <div class="space-y-8">
                     <div class="dashboard-card p-6 fade-in">
-                        <h3 class="text-xl font-bold text-green-400 mb-4">
-                            <i class="fas fa-lightbulb mr-2"></i>Personalized Improvement Plan
-                        </h3>
-                        
+                        <h3 class="text-xl font-bold text-green-400 mb-4"><i class="fas fa-lightbulb mr-2"></i>Personalized Improvement Plan</h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                             <div class="bg-gradient-to-br from-slate-800/40 to-slate-900/70 rounded-xl p-5">
-                                <div class="text-amber-400 text-lg font-bold mb-3">
-                                    <i class="fas fa-bullseye mr-2"></i>Priority Focus
-                                </div>
+                                <div class="text-amber-400 text-lg font-bold mb-3"><i class="fas fa-bullseye mr-2"></i>Priority Focus</div>
                                 <div class="text-white text-xl mb-4">{stats.priorityFocus}</div>
-                                <div class="text-slate-400 text-sm">
-                                    This area will give you the most significant improvement based on your data
-                                </div>
+                                <div class="text-slate-400 text-sm">This area will give you the most significant improvement based on your data</div>
                             </div>
-                            
                             <div class="bg-gradient-to-br from-slate-800/40 to-slate-900/70 rounded-xl p-5">
-                                <div class="text-cyan-400 text-lg font-bold mb-3">
-                                    <i class="fas fa-tachometer-alt mr-2"></i>Estimated Potential
-                                </div>
+                                <div class="text-cyan-400 text-lg font-bold mb-3"><i class="fas fa-tachometer-alt mr-2"></i>Estimated Potential</div>
                                 <div class="text-white text-xl mb-4">{stats.potentialImprovement.toFixed(1)} Strokes/Round</div>
-                                <div class="text-slate-400 text-sm">
-                                    Potential improvement by addressing key issues
-                                </div>
+                                <div class="text-slate-400 text-sm">Potential improvement by addressing key issues</div>
                             </div>
-                            
                             <div class="bg-gradient-to-br from-slate-800/40 to-slate-900/70 rounded-xl p-5">
-                                <div class="text-purple-400 text-lg font-bold mb-3">
-                                    <i class="fas fa-calendar-alt mr-2"></i>Training Timeline
-                                </div>
+                                <div class="text-purple-400 text-lg font-bold mb-3"><i class="fas fa-calendar-alt mr-2"></i>Training Timeline</div>
                                 <div class="text-white text-xl mb-4">{stats.trainingTimeline}</div>
-                                <div class="text-slate-400 text-sm">
-                                    Expected timeframe to see measurable improvement
-                                </div>
+                                <div class="text-slate-400 text-sm">Expected timeframe to see measurable improvement</div>
                             </div>
                         </div>
-                        
                         <h4 class="text-lg font-bold text-amber-300 mb-4">Actionable Recommendations</h4>
-                        
                         <div class="space-y-4">
                             {stats.recommendations.map((rec, i) => (
                                 <div key={i} class="recommendation-card p-4 fade-in" style={{animationDelay: `${0.1 * i}s`}}>
-                                    <div class="flex">
-                                        <div class="text-amber-400 text-2xl w-10">
-                                            {i === 0 ? '1.' : i === 1 ? '2.' : '3.'}
-                                        </div>
+                                    <div class="flex"><div class="text-amber-400 text-2xl w-10">{i+1}.</div>
                                         <div>
                                             <div class="font-bold text-white mb-1">{rec.title}</div>
                                             <div class="text-slate-400 text-sm">{rec.description}</div>
-                                            <div class="flex gap-2 mt-3">
-                                                <span class="text-xs px-2 py-1 bg-slate-700 rounded">{rec.difficulty}</span>
-                                                <span class="text-xs px-2 py-1 bg-slate-700 rounded">{rec.focusArea}</span>
-                                            </div>
+                                            <div class="flex gap-2 mt-3"><span class="text-xs px-2 py-1 bg-slate-700 rounded">{rec.difficulty}</span><span class="text-xs px-2 py-1 bg-slate-700 rounded">{rec.focusArea}</span></div>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                    
                     <div class="dashboard-card p-6 fade-in" style={{animationDelay: "0.2s"}}>
-                        <h3 class="text-xl font-bold text-blue-400 mb-4">
-                            <i class="fas fa-dumbbell mr-2"></i>Recommended Drills
-                        </h3>
-                        
+                        <h3 class="text-xl font-bold text-blue-400 mb-4"><i class="fas fa-dumbbell mr-2"></i>Recommended Drills</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {stats.drills.map((drill, i) => (
                                 <div key={i} class="bg-slate-800/40 rounded-xl p-5">
-                                    <div class="flex items-start mb-4">
-                                        <div class="text-3xl mr-4 text-amber-400">
-                                            {i+1}
-                                        </div>
-                                        <div>
-                                            <div class="font-bold text-lg text-white mb-1">{drill.name}</div>
-                                            <div class="text-slate-400">{drill.focus}</div>
-                                        </div>
-                                    </div>
-                                    <div class="text-slate-300 mb-4">
-                                        {drill.description}
-                                    </div>
-                                    <div class="flex gap-2">
-                                        {drill.benefits.map((benefit, j) => (
-                                            <span key={j} class="text-xs px-2 py-1 bg-green-900/30 text-green-300 rounded">
-                                                {benefit}
-                                            </span>
-                                        ))}
-                                    </div>
+                                    <div class="flex items-start mb-4"><div class="text-3xl mr-4 text-amber-400">{i+1}</div><div><div class="font-bold text-lg text-white mb-1">{drill.name}</div><div class="text-slate-400">{drill.focus}</div></div></div>
+                                    <div class="text-slate-300 mb-4">{drill.description}</div>
+                                    <div class="flex gap-2">{drill.benefits.map((benefit, j) => (<span key={j} class="text-xs px-2 py-1 bg-green-900/30 text-green-300 rounded">{benefit}</span>))}</div>
                                 </div>
                             ))}
                         </div>
@@ -1432,211 +741,124 @@ function SwingTab({ stats }) {
             );
         }
         
-        // Utility function to determine smash factor color
-        function getSmashColor(smash) {
-            if (smash >= 1.38) return '#22c55e'; // Green
-            if (smash >= 1.32) return '#f59e0b'; // Amber
-            return '#ef4444'; // Red
+        function getSmashColor(smash) { return getSmashFactorQuality(smash).color; }
+        function getSmashFactorQuality(smash) {
+            if (smash >= 1.39) return { label: 'Great', color: '#34d399' };
+            if (smash >= 1.35) return { label: 'Good', color: '#22d3ee' };
+            if (smash >= 1.31) return { label: 'Average', color: '#f59e0b' };
+            if (smash > 1.25) return { label: 'Bad', color: '#f97316' };
+            return { label: 'Horrible', color: '#ef4444' };
+        }
+        function getClubPathQuality(path) {
+            const absPath = Math.abs(path);
+            if (absPath <= 1.5) return { label: 'Great', description: 'A neutral path, promoting straight shots.' };
+            if (absPath <= 3.0) return { label: 'Good', description: `A slight ${path < 0 ? 'in-to-out' : 'out-to-in'} path.` };
+            if (absPath <= 4.5) return { label: 'Average', description: `A moderate ${path < 0 ? 'in-to-out' : 'out-to-in'} path.` };
+            return { label: 'Bad', description: `A strong ${path < 0 ? 'in-to-out' : 'out-to-in'} path.` };
+        }
+        function getAttackAngleQuality(angle) {
+            if (angle <= -3 && angle >= -5) return { label: 'Great', description: 'Optimal downward strike, compressing the ball.' };
+            if (angle < -2 && angle > -6) return { label: 'Good', description: 'A solid downward strike on the ball.' };
+            if (angle <= -0.5 && angle > -7) return { label: 'Average', description: 'Slightly shallow or steep, but functional.' };
+            if (angle > 0) return { label: 'Bad', description: 'Sweeping or upward strike, leading to thin shots.' };
+            return { label: 'Horrible', description: 'Very steep attack, leading to heavy shots.' };
+        }
+
+        function calculateStats(shots) {
+            if (!shots || shots.length === 0) return null;
+            const numeric = val => typeof val === 'number' && !isNaN(val);
+            const validShots = shots.filter(shot => Object.values(shot).every(val => numeric(val) || typeof val === 'number'));
+            if (validShots.length === 0) return null;
+            
+            const sum = arr => arr.reduce((a, b) => a + b, 0);
+            const avg = arr => arr.length > 0 ? sum(arr) / arr.length : NaN;
+            const stdDev = arr => {
+                if (arr.length < 2) return NaN;
+                const mean = avg(arr);
+                return Math.sqrt(arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / arr.length);
+            };
+            const min = arr => arr.length > 0 ? Math.min(...arr) : NaN;
+            const max = arr => arr.length > 0 ? Math.max(...arr) : NaN;
+            const roundScore = (val, decimals = 0) => !isNaN(val) ? parseFloat(val.toFixed(decimals)) : NaN;
+            const prob = (count, total) => total > 0 ? (count / total) * 100 : 0;
+
+            const carryDistances = validShots.map(s => s.CarryDistance);
+            const carryAvg = avg(carryDistances);
+
+            const distanceControlCount = validShots.filter(s => Math.abs(s.CarryDistance - carryAvg) <= 10).length;
+            const accuracyCount = validShots.filter(s => Math.abs(s.SideCarry) <= 15).length;
+            const highEfficiencyCount = validShots.filter(s => s.SmashFactor >= 1.40).length;
+            const stockShotNewCount = validShots.filter(s => Math.abs(s.CarryDistance - carryAvg) <= 10 && Math.abs(s.SideCarry) <= 15).length;
+
+            const statsObject = {
+                count: validShots.length,
+                carryDistance: { avg: carryAvg, stdDev: stdDev(carryDistances), min: min(carryDistances), max: max(carryDistances) },
+                totalDistance: { avg: avg(validShots.map(s=>s.TotalDistance)), stdDev: stdDev(validShots.map(s=>s.TotalDistance)), min: min(validShots.map(s=>s.TotalDistance)), max: max(validShots.map(s=>s.TotalDistance)) },
+                ballSpeed: { avg: avg(validShots.map(s=>s.BallSpeed)), stdDev: stdDev(validShots.map(s=>s.BallSpeed)), min: min(validShots.map(s=>s.BallSpeed)), max: max(validShots.map(s=>s.BallSpeed)) },
+                clubSpeed: { avg: avg(validShots.map(s=>s.ClubSpeed)), stdDev: stdDev(validShots.map(s=>s.ClubSpeed)), min: min(validShots.map(s=>s.ClubSpeed)), max: max(validShots.map(s=>s.ClubSpeed)) },
+                sideCarry: { avg: avg(validShots.map(s=>s.SideCarry)), stdDev: stdDev(validShots.map(s=>s.SideCarry)), min: min(validShots.map(s=>s.SideCarry)), max: max(validShots.map(s=>s.SideCarry)) },
+                smashFactor: { avg: avg(validShots.map(s=>s.SmashFactor)), stdDev: stdDev(validShots.map(s=>s.SmashFactor)), min: min(validShots.map(s=>s.SmashFactor)), max: max(validShots.map(s=>s.SmashFactor)) },
+                spinRate: { avg: avg(validShots.map(s=>s.SpinRate)), stdDev: stdDev(validShots.map(s=>s.SpinRate)), min: min(validShots.map(s=>s.SpinRate)), max: max(validShots.map(s=>s.SpinRate)) },
+                clubPath: { avg: avg(validShots.map(s=>s.ClubPath)), stdDev: stdDev(validShots.map(s=>s.ClubPath)), min: min(validShots.map(s=>s.ClubPath)), max: max(validShots.map(s=>s.ClubPath)) },
+                attackAngle: { avg: avg(validShots.map(s=>s.AttackAngle)), stdDev: stdDev(validShots.map(s=>s.AttackAngle)), min: min(validShots.map(s=>s.AttackAngle)), max: max(validShots.map(s=>s.AttackAngle)) },
+                launchAngle: { avg: avg(validShots.map(s=>s.LaunchAngle)), stdDev: stdDev(validShots.map(s=>s.LaunchAngle)), min: min(validShots.map(s=>s.LaunchAngle)), max: max(validShots.map(s=>s.LaunchAngle)) },
+                apex: { avg: avg(validShots.map(s=>s.Apex)), stdDev: stdDev(validShots.map(s=>s.Apex)), min: min(validShots.map(s=>s.Apex)), max: max(validShots.map(s=>s.Apex)) },
+                descentAngle: { avg: avg(validShots.map(s=>s.DescentAngle)), stdDev: stdDev(validShots.map(s=>s.DescentAngle)), min: min(validShots.map(s=>s.DescentAngle)), max: max(validShots.map(s=>s.DescentAngle)) },
+                sideCarryAbs: { avg: avg(validShots.map(s => Math.abs(s.SideCarry))) },
+                
+                distanceControlProb: prob(distanceControlCount, validShots.length),
+                accuracyProb: prob(accuracyCount, validShots.length),
+                highEfficiencyProb: prob(highEfficiencyCount, validShots.length),
+                stockShotProbNew: prob(stockShotNewCount, validShots.length),
+
+                bestCarry: validShots.reduce((best, shot) => (!best || shot.CarryDistance > best.CarryDistance) ? shot : best, {}),
+                bestSmash: validShots.reduce((best, shot) => (!best || shot.SmashFactor > best.SmashFactor) ? shot : best, {}),
+                bestAccuracy: validShots.reduce((best, shot) => (!best || Math.abs(shot.SideCarry) < Math.abs(best.SideCarry)) ? shot : best, {}),
+                maxCarry: max(carryDistances),
+                minSide: min(validShots.map(s => Math.abs(s.SideCarry))),
+                maxSmash: max(validShots.map(s => s.SmashFactor)),
+            };
+
+            const dispersionDistances = validShots.map(shot => Math.sqrt(Math.pow(shot.CarryDistance - carryAvg, 2) + Math.pow(shot.SideCarry, 2))).filter(numeric);
+            statsObject.dispersionScore = roundScore(Math.max(0, 100 - (avg(dispersionDistances) * 1.5)));
+            statsObject.accuracyScore = roundScore(Math.max(0, 100 - (statsObject.sideCarryAbs.avg * 3)));
+            statsObject.smashQuality = roundScore(Math.min(100, (statsObject.smashFactor.avg - 1.2) * 500));
+            statsObject.overallRating = roundScore((statsObject.dispersionScore * 0.4) + (statsObject.accuracyScore * 0.3) + (statsObject.smashQuality * 0.3));
+            statsObject.consistencyScore = roundScore(Math.max(0, 100 - (statsObject.carryDistance.stdDev * 2) - (statsObject.sideCarryAbs.avg * 1.5)));
+            statsObject.missLeft = prob(validShots.filter(s => s.SideCarry < -5).length, validShots.length);
+            statsObject.missRight = prob(validShots.filter(s => s.SideCarry > 5).length, validShots.length);
+            statsObject.missShort = prob(validShots.filter(s => s.CarryDistance < carryAvg - 10).length, validShots.length);
+            statsObject.missLong = prob(validShots.filter(s => s.CarryDistance > carryAvg + 10).length, validShots.length);
+
+            statsObject.girProbabilities = (() => {
+                const ranges = [ { minStd: -1.5, maxStd: -1.0 }, { minStd: -1.0, maxStd: -0.5 }, { minStd: -0.5, maxStd: 0.0 },  { minStd: 0.0, maxStd: 0.5 }, { minStd: 0.5, maxStd: 1.0 }, { minStd: 1.0, maxStd: 1.5 } ];
+                const carryStdDev = statsObject.carryDistance.stdDev;
+                if (isNaN(carryAvg) || isNaN(carryStdDev)) return ranges.map(r => ({ distance: "N/A", probability: 0 }));
+                return ranges.map(range => {
+                    const lowerBound = carryAvg + (range.minStd * carryStdDev);
+                    const upperBound = carryAvg + (range.maxStd * carryStdDev);
+                    const shotsInBucket = validShots.filter(s=>s.CarryDistance >= lowerBound && s.CarryDistance <= upperBound);
+                    const girCount = shotsInBucket.filter(s => Math.abs(s.SideCarry) <= 15).length;
+                    return { distance: `${Math.round(lowerBound)}-${Math.round(upperBound)}`, probability: roundScore(prob(girCount, shotsInBucket.length)) };
+                });
+            })();
+
+            statsObject.priorityFocus = statsObject.dispersionScore < 70 ? "Accuracy & Dispersion" : statsObject.smashQuality < 70 ? "Contact Quality" : "Distance Control";
+            statsObject.potentialImprovement = roundScore((100 - statsObject.overallRating) / 10, 1);
+            statsObject.trainingTimeline = statsObject.overallRating > 80 ? "2-4 Weeks" : statsObject.overallRating > 60 ? "4-6 Weeks" : "6-8 Weeks";
+            statsObject.recommendations = [
+                { title: "Improve Strike Consistency", description: "Use impact tape during practice to monitor center-face contact. The goal is to cluster impacts in the center of the club face.", difficulty: "Moderate", focusArea: "Ball Striking" },
+                { title: "Calibrate Distance Control", description: "Practice hitting shots to specific targets at 75%, 85%, and 95% of your full swing power to improve your distance gapping.", difficulty: "Moderate", focusArea: "Distance Control" },
+                { title: "Develop Pre-shot Routine", description: "Create and stick to a consistent 20-second routine before every shot to improve focus and repeatability.", difficulty: "Easy", focusArea: "Mental Game" }
+            ];
+            statsObject.drills = [ 
+                { name: "Gate Drill", focus: "Club Path & Face Control", description: "Set two alignment sticks or headcovers on the ground just wider than your clubhead. Your goal is to swing through the gate without hitting either side.", benefits: ["Better path", "Center contact"] },
+                { name: "Ladder Drill", focus: "Distance Control", description: "Set targets at various distances (e.g., 140, 150, 160 yds) and try to land a ball at each 'rung' of the ladder consecutively.", benefits: ["Feel", "Yardage gapping"] }
+            ];
+            
+            return statsObject;
         }
         
-// Function to calculate stats from CSV data
-function calculateStats(shots) {
-    if (!shots || shots.length === 0) {
-        console.error("No shots data provided to calculateStats");
-        return null; // Return null if no shots or empty array
-    }
-    
-    // Helper function to check for numeric values
-    const numeric = val => typeof val === 'number' && !isNaN(val);
-
-    // Filter for valid shots, ensuring all key metrics are numeric
-    const validShots = shots.filter(shot => 
-        numeric(shot.CarryDistance) && 
-        numeric(shot.TotalDistance) &&
-        numeric(shot.BallSpeed) &&
-        numeric(shot.ClubSpeed) &&
-        numeric(shot.SideCarry) && 
-        numeric(shot.SmashFactor) && 
-        numeric(shot.ClubPath) && 
-        numeric(shot.AttackAngle) &&
-        numeric(shot.LaunchAngle) &&
-        numeric(shot.SpinRate) &&
-        numeric(shot.Apex) &&
-        numeric(shot.DescentAngle)
-    );
-    
-    if (validShots.length === 0) {
-        console.error("No valid shots after filtering in calculateStats");
-        return null; // Return null if no valid shots after filtering
-    }
-    
-    // Modified helper functions to return NaN for empty/invalid arrays for easier checking later
-    const sum = arr => arr.reduce((a, b) => a + b, 0);
-    const avg = arr => {
-        const cleanArr = arr.filter(numeric); // Ensure only numeric values are processed
-        if (cleanArr.length === 0) return NaN;
-        return sum(cleanArr) / cleanArr.length;
-    };
-    const stdDev = arr => {
-        const cleanArr = arr.filter(numeric);
-        if (cleanArr.length < 2) return NaN; // StdDev needs at least 2 points
-        const mean = avg(cleanArr);
-        if (isNaN(mean)) return NaN;
-        const variance = cleanArr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / cleanArr.length; // Use N for population
-        return Math.sqrt(variance);
-    };
-    const min = arr => {
-        const cleanArr = arr.filter(numeric);
-        if (cleanArr.length === 0) return NaN;
-        return Math.min(...cleanArr);
-    };
-    const max = arr => {
-        const cleanArr = arr.filter(numeric);
-        if (cleanArr.length === 0) return NaN;
-        return Math.max(...cleanArr);
-    };
-    // Rounding for scores/percentages (0 or 1 decimal place usually)
-    const roundScore = (val, decimals = 0) => {
-        if (isNaN(val)) return NaN;
-        return parseFloat(val.toFixed(decimals));
-    }
-
-
-    const carryDistances = validShots.map(s => s.CarryDistance);
-    const totalDistances = validShots.map(s => s.TotalDistance);
-    const ballSpeeds = validShots.map(s => s.BallSpeed);
-    const clubSpeeds = validShots.map(s => s.ClubSpeed);
-    const sideCarries = validShots.map(s => s.SideCarry);
-    const smashFactors = validShots.map(s => s.SmashFactor);
-    const spinRates = validShots.map(s => s.SpinRate);
-    const clubPaths = validShots.map(s => s.ClubPath);
-    const attackAngles = validShots.map(s => s.AttackAngle);
-    const launchAngles = validShots.map(s => s.LaunchAngle);
-    const apexes = validShots.map(s => s.Apex);
-    const descentAngles = validShots.map(s => s.DescentAngle);
-    
-    const carryAvg = avg(carryDistances);
-    const carryStdDev = stdDev(carryDistances);
-    const sideAbsAvg = avg(sideCarries.map(s => Math.abs(s)));
-    
-    const stockShotCount = validShots.filter(shot => 
-        !isNaN(carryAvg) && Math.abs(shot.CarryDistance - carryAvg) <= 10 &&
-        Math.abs(shot.SideCarry) <= 10
-    ).length;
-    const stockShotProb = roundScore((stockShotCount / validShots.length) * 100);
-    
-    const dispersionDistances = validShots.map(shot => 
-        !isNaN(carryAvg) ? Math.sqrt(Math.pow(shot.CarryDistance - carryAvg, 2) + Math.pow(shot.SideCarry, 2)) : NaN
-    ).filter(numeric);
-    const avgDispersion = avg(dispersionDistances);
-    const dispersionScore = roundScore(Math.max(0, 100 - (avgDispersion * 1.5)));
-    
-    const accuracyScore = roundScore(Math.max(0, 100 - (sideAbsAvg * 3)));
-    
-    const currentSmashAvg = avg(smashFactors);
-    const smashQuality = roundScore(Math.min(100, (currentSmashAvg - 1.2) * 500));
-    
-    const overallRating = roundScore(
-        (dispersionScore * 0.4) + 
-        (accuracyScore * 0.3) + 
-        (smashQuality * 0.3)
-    );
-    
-    const missCounts = validShots.reduce((acc, shot) => {
-        if (shot.SideCarry < -5) acc.left++;
-        if (shot.SideCarry > 5) acc.right++;
-        if (!isNaN(carryAvg) && shot.CarryDistance < carryAvg - 5) acc.short++;
-        if (!isNaN(carryAvg) && shot.CarryDistance > carryAvg + 5) acc.long++;
-        return acc;
-    }, {left: 0, right: 0, short: 0, long: 0});
-    
-    const missLeft = roundScore((missCounts.left / validShots.length) * 100);
-    const missRight = roundScore((missCounts.right / validShots.length) * 100);
-    const missShort = roundScore((missCounts.short / validShots.length) * 100);
-    const missLong = roundScore((missCounts.long / validShots.length) * 100);
-    
-    const currentClubPathStdDev = stdDev(clubPaths);
-    const swingEfficiency = roundScore(Math.min(100, (currentSmashAvg * 20) + (50 - (currentClubPathStdDev * 5))));
-    
-    const consistencyScore = roundScore(Math.max(0, 100 - (carryStdDev * 2) - (sideAbsAvg * 1.5)));
-    
-    const bestCarryShot = validShots.reduce((best, shot) => (!best || shot.CarryDistance > best.CarryDistance) ? shot : best, validShots[0] || {});
-    const bestSmashShot = validShots.reduce((best, shot) => (!best || shot.SmashFactor > best.SmashFactor) ? shot : best, validShots[0] || {});
-    const bestAccuracyShot = validShots.reduce((best, shot) => (!best || Math.abs(shot.SideCarry) < Math.abs(best.SideCarry)) ? shot : best, validShots[0] || {});
-    
-    const girProbabilities = (() => {
-        const ranges = [
-            { minStd: -2.5, maxStd: -2.0 }, { minStd: -2.0, maxStd: -1.5 },
-            { minStd: -1.5, maxStd: -1.0 }, { minStd: -1.0, maxStd: -0.5 },
-            { minStd: -0.5, maxStd: 0.0 },  { minStd: 0.0, maxStd: 0.5 },
-            { minStd: 0.5, maxStd: 1.0 },   { minStd: 1.0, maxStd: 1.5 },
-            { minStd: 1.5, maxStd: 2.0 },   { minStd: 2.0, maxStd: 2.5 }
-        ];
-        if (isNaN(carryAvg) || isNaN(carryStdDev)) return ranges.map(r => ({ distance: "N/A", probability: 0 }));
-
-        return ranges.map(range => {
-            const lowerBound = carryAvg + (range.minStd * carryStdDev);
-            const upperBound = carryAvg + (range.maxStd * carryStdDev);
-            const count = validShots.filter(shot => 
-                shot.CarryDistance >= lowerBound && shot.CarryDistance <= upperBound
-            ).length;
-            return {
-                distance: `${Math.round(lowerBound)}-${Math.round(upperBound)}`,
-                probability: roundScore((count / validShots.length) * 100)
-            };
-        });
-    })();
-    
-    const bestGirRange = girProbabilities.reduce((best, current) => 
-        current.probability > best.probability ? current : best, 
-        {probability: 0, distance: 'N/A'}
-    );
-    
-    const stats = {
-        count: validShots.length,
-        carryDistance:    { avg: carryAvg,                 stdDev: carryStdDev,                 min: min(carryDistances), max: max(carryDistances) },
-        totalDistance:    { avg: avg(totalDistances),      stdDev: stdDev(totalDistances),      min: min(totalDistances), max: max(totalDistances) },
-        ballSpeed:        { avg: avg(ballSpeeds),          stdDev: stdDev(ballSpeeds),          min: min(ballSpeeds),     max: max(ballSpeeds) },
-        clubSpeed:        { avg: avg(clubSpeeds),          stdDev: stdDev(clubSpeeds),          min: min(clubSpeeds),     max: max(clubSpeeds) },
-        sideCarry:        { avg: avg(sideCarries),         stdDev: stdDev(sideCarries),         min: min(sideCarries),    max: max(sideCarries) },
-        smashFactor:      { avg: currentSmashAvg,          stdDev: stdDev(smashFactors),        min: min(smashFactors),   max: max(smashFactors) },
-        spinRate:         { avg: avg(spinRates),           stdDev: stdDev(spinRates),           min: min(spinRates),      max: max(spinRates) },
-        clubPath:         { avg: avg(clubPaths),           stdDev: currentClubPathStdDev,       min: min(clubPaths),      max: max(clubPaths) },
-        attackAngle:      { avg: avg(attackAngles),        stdDev: stdDev(attackAngles),        min: min(attackAngles),   max: max(attackAngles) },
-        launchAngle:      { avg: avg(launchAngles),        stdDev: stdDev(launchAngles),        min: min(launchAngles),   max: max(launchAngles) },
-        apex:             { avg: avg(apexes),              stdDev: stdDev(apexes),              min: min(apexes),         max: max(apexes) },
-        descentAngle:     { avg: avg(descentAngles),       stdDev: stdDev(descentAngles),       min: min(descentAngles),  max: max(descentAngles) },
-        sideCarryAbs:     { avg: sideAbsAvg },
-        bestGirRange,
-        stockShotProb,
-        consistencyScore,
-        accuracyScore,
-        smashQuality,
-        overallRating,
-        dispersionScore,
-        maxCarry: max(carryDistances),
-        maxSmash: max(smashFactors),
-        minSide: min(sideCarries.map(Math.abs)),
-        missLeft, missRight, missShort, missLong,
-        swingEfficiency,
-        priorityFocus: dispersionScore < 70 ? "Accuracy" : smashQuality < 70 ? "Contact Quality" : "Distance Control",
-        potentialImprovement: roundScore(100 - overallRating, 1),
-        trainingTimeline: overallRating > 80 ? "2-4 Weeks" : overallRating > 60 ? "4-6 Weeks" : "6-8 Weeks",
-        recommendations: [
-            { title: "Improve Strike Consistency", description: "Use impact tape during practice to monitor center-face contact.", difficulty: "Moderate", focusArea: "Ball Striking" },
-            { title: "Develop Pre-shot Routine", description: "Create a consistent 20-second routine before each shot.", difficulty: "Easy", focusArea: "Mental Game" }
-        ],
-        drills: [ { name: "Gate Drill", focus: "Club Path & Face Control", description: "Set two alignment sticks just wider than your clubhead.", benefits: ["Better path", "Improved accuracy"] } ],
-        bestCarry: bestCarryShot,
-        bestSmash: bestSmashShot,
-        bestAccuracy: bestAccuracyShot,
-        girProbabilities
-    };
-    
-    return stats;
-}
-        
-        // Render the app
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
